@@ -52,63 +52,6 @@ body {
   </body>
 </html>
 ```
-- ts 프로젝트에서 jsx 를 사용하도록 설정하기
-- `tsconfig.app.json` 수정
-
-```json
-{
-  "compilerOptions": {
-    "composite": true, // ← 프로젝트 참조 사용 시 필요
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    "allowJs": true,
-    "checkJs": false,
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
-  },
-  "include": ["src"]
-}
-```
-
-- `.vscode/settings.json` 수정
-
-```json
-{
-  "files.autoSave": "off",
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit"
-  },
-  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
-  "typescript.suggest.autoImports": true,
-  "typescript.suggest.paths": true,
-  "javascript.suggest.autoImports": true,
-  "javascript.suggest.paths": true,
-
-  // 워크스페이스 TS 사용(강력 권장)
-  "typescript.tsdk": "node_modules/typescript/lib"
-}
-```
-
 
 # 컴포넌트 생성
 
