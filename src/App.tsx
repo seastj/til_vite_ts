@@ -1,24 +1,14 @@
-type SampleProps = {
-  age: number;
-  nickName: string;
-  children?: React.ReactNode;
-};
+import Counter from './components/Counter';
+import NameEditor from './components/NameEditor';
 
-const Sample = ({ age, nickName }: SampleProps) => {
-  return (
-    <div>
-      {age}살 이고요. 별명이 {nickName} 인 샘플입니다.
-    </div>
-  );
-};
-
-const App = () => {
+function App() {
   return (
     <div>
       <h1>App</h1>
-      <Sample age={20} nickName="홍길동" />
+      <Counter />
+      <NameEditor />
     </div>
   );
-};
+}
 
 export default App;
