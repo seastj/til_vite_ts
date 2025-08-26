@@ -696,7 +696,6 @@ const TodoItem = ({ todo, toggleTodo, deleteTodo, editTodo }: TodoItemProps): JS
   const handleEditSave = () => {
     if (editTitle.trim()) {
       editTodo(todo.id, editTitle);
-      setEditTitle('');
       setIsEdit(false);
     }
   };
