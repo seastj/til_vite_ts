@@ -1,18 +1,20 @@
 import React from 'react';
-import TodoList from './components/todos/TodoList';
-import TodoWrite from './components/todos/TodoWrite';
-import { TodoProvider } from './contexts/TodoContext';
+import GoodList from './components/shop/GoodList';
+import Cart from './contexts/shop/Cart';
+import Wallet from './contexts/shop/Wallet';
+import { ShopProvider } from './contexts/shop/ShopContext';
 
 function App() {
   return (
     <div>
-      <h1>할일 웹 서비스</h1>
-      <TodoProvider>
+      <h1>나의 가게</h1>
+      <ShopProvider>
         <div>
-          <TodoWrite />
-          <TodoList />
+          <GoodList />
+          <Cart />
+          <Wallet />
         </div>
-      </TodoProvider>
+      </ShopProvider>
     </div>
   );
 }
