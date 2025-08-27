@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { useTodos } from '../../contexts/TodoContext';
 import type { TodoType } from '../../types/TodoTypes';
 
 type TodoWriteProps = {
   children?: React.ReactNode;
-  addTodo: (newTodo: TodoType) => void;
 };
 
-const TodoWrite = ({ addTodo }: TodoWriteProps) => {
+const TodoWrite = ({}: TodoWriteProps) => {
+  // Context 사용함
+  const { addTodo } = useTodos();
   const [title, setTitle] = useState<string>('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

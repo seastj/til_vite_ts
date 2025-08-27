@@ -1,26 +1,15 @@
-import type { TodoType } from '../../types/TodoTypes';
+import React from 'react';
+import { useTodos } from '../../contexts/TodoContext';
 import TodoItem from './TodoItem';
 
-interface TodoListProps {
-  todos: TodoType[];
-  toggleTodo: (id: string) => void;
-  deleteTodo: (id: string) => void;
-  editTodo: (id: string, editTitle: string) => void;
-}
-
-const TodoList = ({ todos, toggleTodo, deleteTodo, editTodo }: TodoListProps): JSX.Element => {
+const TodoList = ({}): JSX.Element => {
+  const { todos } = useTodos();
   return (
     <div>
       <h2>TodoList</h2>
       <ul>
         {todos.map((item: any) => (
-          <TodoItem
-            key={item.id}
-            todo={item}
-            toggleTodo={toggleTodo}
-            deleteTodo={deleteTodo}
-            editTodo={editTodo}
-          />
+          <TodoItem key={item.id} todo={item} />
         ))}
       </ul>
     </div>

@@ -1,17 +1,16 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { TodoType } from '../../types/TodoTypes';
+import { useTodos } from '../../contexts/TodoContext';
 
 interface TodoItemProps {
   todo: TodoType;
-  toggleTodo: (id: string) => void;
-  deleteTodo: (id: string) => void;
-  editTodo: (id: string, editTitle: string) => void;
 }
 
-const TodoItem = ({ todo, toggleTodo, deleteTodo, editTodo }: TodoItemProps): JSX.Element => {
+const TodoItem = ({ todo }: TodoItemProps): JSX.Element => {
   // 수정중인지
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [editTitle, setEditTitle] = useState<string>(todo.title);
+  const { toggleTodo, deleteTodo, editTodo } = useTodos();
 
   const handleChangeTitle = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditTitle(e.target.value);
