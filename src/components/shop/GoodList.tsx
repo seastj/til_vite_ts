@@ -1,16 +1,32 @@
 import React from 'react';
-import { useShop } from '../../contexts/shop/ShopContext';
+import { useShop } from '../../features/shop';
 
 const GoodList = () => {
+  const box: React.CSSProperties = {
+    border: '2px solid #eee',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    background: '#fff',
+  };
+  const boxrow: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 0',
+    borderBottom: '1px solid #eee',
+  };
+
   const { goods, addCart } = useShop();
   return (
-    <div>
-      <h2>GoodList</h2>
-      <ul>
+    <div style={box}>
+      <h2>🍥GoodList</h2>
+      <ul style={{ padding: 0, margin: 0 }}>
         {goods.map(item => (
-          <li key={item.id}>
-            <span>제품명 : {item.name}</span>
-            <span>가격 : {item.price} 원</span>
+          <li key={item.id} style={boxrow}>
+            <span>
+              <strong>{item.name}</strong> {item.price} 원
+            </span>
             <button onClick={() => addCart(item.id)}>담기</button>
           </li>
         ))}

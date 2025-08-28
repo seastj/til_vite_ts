@@ -1,18 +1,34 @@
 import React from 'react';
 import GoodList from './components/shop/GoodList';
-import Cart from './contexts/shop/Cart';
-import Wallet from './contexts/shop/Wallet';
-import { ShopProvider } from './contexts/shop/ShopContext';
+import Cart from './components/shop/Cart';
+import Wallet from './components/shop/Wallet';
+import { ShopProvider } from './features/shop';
 
+const page: React.CSSProperties = {
+  maxWidth: 960,
+  margin: '0 auto',
+  padding: 24,
+  background: '#eee',
+};
+const grid: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 320px',
+  gap: 20,
+  alignItems: 'start',
+};
 function App() {
   return (
-    <div>
-      <h1>나의 가게</h1>
+    <div style={page}>
+      <h1>📠나의 가게</h1>
       <ShopProvider>
-        <div>
-          <GoodList />
-          <Cart />
-          <Wallet />
+        <div style={grid}>
+          <div>
+            <GoodList />
+            <Cart />
+          </div>
+          <div>
+            <Wallet />
+          </div>
         </div>
       </ShopProvider>
     </div>
