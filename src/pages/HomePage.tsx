@@ -11,7 +11,6 @@ function HomePage() {
   };
   return (
     <div>
-      <h2>HomePage</h2>
       <div style={box}>
         <h2>환영합니다</h2>
         <p>이곳은 홈 화면 입니다. 상단 메뉴에서 쇼핑을 해주세요</p>
