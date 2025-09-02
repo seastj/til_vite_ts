@@ -20,7 +20,7 @@ const TodoWrite = ({}: TodoWriteProps) => {
 
   // Supabase 에 데이터를 Insert 한다. : 비동기
   const handleSave = async (): Promise<void> => {
-    if (title.trim()) {
+    if (!title.trim()) {
       alert('제목을 입력하세요.');
       return;
     }
