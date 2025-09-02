@@ -1,16 +1,16 @@
 import React from 'react';
-import { createTodo } from './services/todoService';
+import { TodoProvider } from './contexts/TodoContext';
+import TodoWrite from './components/todos/TodoWrite';
+import TodoList from './components/todos/TodoList';
 
 function App() {
-  const addTodo = async (): Promise<void> => {
-    const result = await createTodo({ title: '할일 입니다.', content: '내용 입니다.' });
-    if (result) {
-      console.log(result);
-    }
-  };
   return (
     <div>
-      <button onClick={addTodo}>할일 추가</button>
+      <h1>Todo Service</h1>
+      <TodoProvider>
+        <TodoWrite />
+        <TodoList />
+      </TodoProvider>
     </div>
   );
 }

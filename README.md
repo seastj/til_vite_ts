@@ -1,6 +1,14 @@
 # Supabase 프로젝트 연동
 
-- 테이블 생성은 생략함.
+- https://supabase.com/
+- `깃허브`로 회원가입 함.
+- `New organization` 으로 프로젝트 생성
+- `데이터베이스 비밀번호`는 꼭 보관하자. (.env)
+- 테이블 생성 (Table Editor 또는 SQL Editor)
+- 기본형은 `Table Editor` 로 생성하고 추가적인 설정은 `SQL Editor`
+- 익숙하다면 `SQL Editor` 로 관리 권장. (ChatGPT 활용 권장)
+
+## 1. todos 테이블 생성 쿼리
 
 ```sql
 CREATE TABLE todos (
@@ -13,7 +21,7 @@ CREATE TABLE todos (
 );
 ```
 
-## 1. `.env` 파일 생성
+## 2. `.env` 파일 생성
 
 - `VITE_`를 접두어로 사용
 
@@ -23,13 +31,17 @@ VITE_SUPABASE_URL=URL값
 VITE_SUPABASE_ANON_KEY=키값
 ```
 
-## 2. Supabase 클라이언트 라이브러리 설치
+- Supabase URL 과 Anon Key 파악하기
+  - Project 선택 후 `Project Overview` 에서 확인
+  - `Project API` 항목에서 파악 가능
+
+## 3. Supabase 클라이언트 라이브러리 설치
 
 ```bash
 npm install @supabase/supabase-js
 ```
 
-## 3. 폴더 및 파일 구조
+## 4. 폴더 및 파일 구조
 
 - `/src/lib` 폴더 생성
 - `/src/lib/supabase.ts` 파일 생성
@@ -44,21 +56,29 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
-
+// 웹 브라우저 클라이언트 생성
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 ```
 
-## 4. Supabase 의 테이블의 칼럼의 데이터 타입 정의
+## 5. Supabase 의 테이블의 칼럼의 데이터 타입 정의
 
-### 4.1. 데이터 타입 쉽게 추출하기
+### 5.1. 데이터 타입 쉽게 추출하기
 
 ```bash
 npx supabase login
 ```
 
 - 향후 지시하는대로 실행함.
-- id 는 URL 의 앞쪽 단어가 ID가 됨.
-- package.json 수정
+- `id` 는 URL 의 앞쪽 단어가 ID가 됨.
+  - id 는 Supabase URL의 앞단어
+  - 또는 메뉴 진입시 `Project Settings` > `General Settings`
+- package.json 추가
+
+```json
+"generate-types": "npx supabase gen types typescript --project-id 프로젝트아이디 --schema 경로 > 파일"
+```
+
+- `scripts` 에 항목 작성(`npm run generate-types`)
 
 ```json
 "scripts": {
@@ -67,11 +87,100 @@ npx supabase login
   },
 ```
 
-## 5. CRUD 실행해보기
+- 생성된 ts 의 내용을 참조해서 우리가 원하는 곳에 복사 및 붙여넣기 권장
+  - 권장사항 : `/src/types/database.ts 생성 및 붙여넣기`
+  - 편하게 활용하기 위한 처리
 
-### 5.1. CRUD 를 위한 폴더 및 파일 구조
+```ts
+export type Todo = Database['public']['Tables']['todos']['Row'];
+export type TodoInsert = Database['public']['Tables']['todos']['Insert'];
+export type TodoUpdate = Database['public']['Tables']['todos']['Update'];
+```
 
+## 6. CRUD 실행해보기
+
+### 6.1. CRUD 를 위한 폴더 및 파일 구조
+
+- https://supabase.com/docs/reference/javascript/start
 - `/src/apis` 폴더 생성 또는 `/src/services` 폴더 생성
-
 - 예) `/src/services` 폴더 로 진행
 - /src/services/todoService.ts 파일 생성
+- 반드시 `async ... await` 활용(비동기)
+- 반드시 함수 리턴타입 : `Promise<리턴 데이터타입>`
+  - axios, fetch 등등...
+
+```ts
+import { supabase } from '../lib/supabase';
+import type { Todo, TodoInsert, TodoUpdate } from '../types/TodoTypes';
+
+// Todo 목록 조회
+export const getTodos = async (): Promise<Todo[] | undefined> => {
+  try {
+    const { data, error } = await supabase
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      // 실행은 되었지만 결과가 오류이다.
+      throw new Error(`getTodos 오류 : ${error.message}`);
+    }
+    return data || [];
+  } catch (error) {
+    console.log(error);
+  }
+};
+// Todo 생성
+export const createTodo = async (newTodo: TodoInsert): Promise<Todo | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('todos')
+      .insert([{ ...newTodo, completed: false }])
+      .select()
+      .single();
+    if (error) {
+      // 실행은 되었지만 결과가 오류이다.
+      throw new Error(`createTodos 오류 : ${error.message}`);
+    }
+    return data;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
+// Todo 수정
+export const updateTodo = async (id: number, editTitle: TodoUpdate): Promise<Todo | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('todos')
+      .update({ ...editTitle, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .single();
+    if (error) {
+      // 실행은 되었지만 결과가 오류이다.
+      throw new Error(`updateTodos 오류 : ${error.message}`);
+    }
+    return data;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
+// Todo 삭제
+export const deleteTodo = async (id: number): Promise<void> => {
+  try {
+    const { error } = await supabase.from('todos').delete().eq('id', id);
+    if (error) {
+      // 실행은 되었지만 결과가 오류이다.
+      throw new Error(`deleteTodos 오류 : ${error.message}`);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+// Completed Toggle
+export const toggleTodo = async (id: number, completed: boolean): Promise<Todo | null> => {
+  return updateTodo(id, { completed });
+};
+```
+
+## 7. todos 예제

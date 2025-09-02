@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { Todo, TodoInsert, TodoUpdate } from '../types/TodoTypes';
 
 // Todo 목록 조회
-export const getTodos = async (): Promise<Todo[] | undefined> => {
+export const getTodos = async (): Promise<Todo[] | null> => {
   try {
     const { data, error } = await supabase
       .from('todos')
@@ -16,6 +16,7 @@ export const getTodos = async (): Promise<Todo[] | undefined> => {
   } catch (error) {
     console.log(error);
   }
+  return null;
 };
 // Todo 생성
 export const createTodo = async (newTodo: TodoInsert): Promise<Todo | null> => {
