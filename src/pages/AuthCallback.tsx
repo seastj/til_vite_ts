@@ -7,10 +7,12 @@ import { useEffect, useState } from 'react';
  */
 function AuthCallback() {
   const [msg, setMsg] = useState<string>('인증 처리 중 ...');
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setMsg('✔ 이메일 인증 완료. 홈으로 이동하세요.');
     }, 1500);
+
     // 클린업 함수
     return () => {
       clearTimeout(timer);
@@ -19,6 +21,7 @@ function AuthCallback() {
 
   return (
     <div>
+      <h2>인증 페이지</h2>
       <h2>{msg}</h2>
     </div>
   );
