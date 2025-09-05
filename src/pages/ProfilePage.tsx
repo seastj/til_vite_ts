@@ -12,7 +12,7 @@ import type { Profile, ProfileUpdate } from '../types/TodoTypes';
 
 function ProfilePage() {
   // 회원 기본 정보
-  const { user } = useAuth();
+  const { user, deleteAccount } = useAuth();
   // 데이터 가져오는 동안 로딩한다.
   const [loading, setLoading] = useState<boolean>(true);
   // 사용자 프로필
@@ -73,6 +73,17 @@ function ProfilePage() {
     }
   };
 
+  // 회원탈퇴
+  const handleDeleteUser = () => {
+    const message: string = '🚫 계정을 완전히 삭제하시겠습니까? \n\n 복구가 불가능합니다.';
+    let isConfirm = false;
+    isConfirm = confirm(message);
+
+    if (isConfirm) {
+      deleteAccount();
+    }
+  };
+
   useEffect(() => {
     loadProfile();
   }, []);
@@ -106,6 +117,7 @@ function ProfilePage() {
       </div>
     );
   }
+
   return (
     <div>
       <h2>회원정보</h2>
@@ -173,7 +185,7 @@ function ProfilePage() {
         ) : (
           <>
             <button onClick={() => setEdit(true)}>정보수정</button>
-            <button>회원탈퇴</button>
+            <button onClick={handleDeleteUser}>회원탈퇴</button>
           </>
         )}
       </div>
