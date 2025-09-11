@@ -9,13 +9,17 @@ import {
 
 interface TodoItemProps {
   todo: Todo;
+  index: number;
 }
 
-const TodoItem = ({ todo }: TodoItemProps): JSX.Element => {
+const TodoItem = ({ todo, index }: TodoItemProps): JSX.Element => {
+  const { toggleTodo, deleteTodo, editTodo, currentPage, itemsPerPage, totalCount } = useTodos();
+  // 순서번호 매기기
+  const globalIndex = totalCount - ((currentPage - 1) * itemsPerPage + index);
+
   // 수정중인지
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [editTitle, setEditTitle] = useState<string>(todo.title);
-  const { toggleTodo, deleteTodo, editTodo } = useTodos();
 
   const handleChangeTitle = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditTitle(e.target.value);
@@ -77,6 +81,8 @@ const TodoItem = ({ todo }: TodoItemProps): JSX.Element => {
 
   return (
     <li>
+      {/* 출력 번호 */}
+      <span>{globalIndex}</span>
       {isEdit ? (
         <>
           <input

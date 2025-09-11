@@ -5,9 +5,10 @@ import { createTodo } from '../../services/todoService';
 
 type TodoWriteProps = {
   children?: React.ReactNode;
+  handleChangePage: (page: number) => void;
 };
 
-const TodoWrite = ({}: TodoWriteProps) => {
+const TodoWrite = ({ handleChangePage }: TodoWriteProps) => {
   // Context 사용함
   const { addTodo } = useTodos();
 
@@ -32,6 +33,8 @@ const TodoWrite = ({}: TodoWriteProps) => {
       if (result) {
         // Context 에 Todo 타입 데이터를 추가해줌.
         addTodo(result);
+        // 현재 페이지를 1페이지로 이동
+        handleChangePage(1);
       }
       // 현재 Write 컴포넌트 state 초기화
       setTitle('');
