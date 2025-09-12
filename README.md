@@ -636,8 +636,40 @@ export function useInfiniteScroll(): InfiniteScrollContextValue {
 
 - /src/pages/TodosInfinitePage.tsx 생성
 
+## 5. 무한 스크롤 구현
+
+### 5.1. npm 설치
+
+- https://www.npmjs.com/package/react-infinite-scroll-component
+- https://blog.itcode.dev/posts/2024/07/22/react-component-infinite-scroll
+
+```bash
+npm i react-infinite-scroll-component
+```
+
+### 5.2. 기본 사용법
+
+```tsx
+<div style={{ height: 500, overflow: 'auto' }}>
+  <InfiniteScroll
+    dataLength={todos.length}
+    next={loadMoreTodos}
+    hasMore={hasMore}
+    height={500}
+    loader={<div>데이터를 불러오는 중...</div>}
+    endMessage={<div>모든데이터를 불러왔습니다.</div>}
+  >
+    {todos.map(~~~~)}
+  </InfiniteScroll>
+</div>
+```
+
+- /src/pages/TodosInfinitePage.tsx
+- 전체 적용 코드
+
 ```tsx
 import { useEffect, useState } from 'react';
+import InfiniteScroll from 'react-infinite-scroll-component';
 import { useAuth } from '../contexts/AuthContext';
 import { InfiniteScrollProvider, useInfiniteScroll } from '../contexts/InfiniteScrollContext';
 import { getProfile } from '../lib/profile';
@@ -690,8 +722,17 @@ const InfiniteTodoWrite = () => {
 
 // 목록 컴포넌트
 const InfiniteTodoList = () => {
-  const { loading, todos, totalCount, editTodo, toggleTodo, deleteTodo, loadingInitialTodos } =
-    useInfiniteScroll();
+  const {
+    loading,
+    todos,
+    totalCount,
+    editTodo,
+    toggleTodo,
+    deleteTodo,
+    loadingInitialTodos,
+    loadMoreTodos,
+    hasMore,
+  } = useInfiniteScroll();
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -705,8 +746,6 @@ const InfiniteTodoList = () => {
     };
     loadProfile();
   }, [user?.id]);
-
-  // Intersection Observer 를 이용한 무한 스크롤
 
   // 번호 계산 함수(최신글이 높은 번호가지도록)
   const getGlobalIndex = (index: number) => {
@@ -790,53 +829,63 @@ const InfiniteTodoList = () => {
       {todos.length === 0 ? (
         <p>등록된 할일이 없습니다.</p>
       ) : (
-        <div>
-          <ul>
-            {todos.map((item, index) => (
-              <li key={item.id}>
-                {/* 번호표시 */}
-                {getGlobalIndex(index)}
-                {/* 체크박스 */}
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  onChange={() => handleToggle(item.id)}
-                />
-                {/* 제목과 날짜출력 */}
-                <div>
+        // 무한 스크롤 라이브러리 적용
+        <div style={{ height: 500, overflow: 'auto' }}>
+          <InfiniteScroll
+            dataLength={todos.length}
+            next={loadMoreTodos}
+            hasMore={hasMore}
+            height={500}
+            loader={<div>데이터를 불러오는 중...</div>}
+            endMessage={<div>모든 데이터를 불러왔습니다.</div>}
+          >
+            <ul>
+              {todos.map((item, index) => (
+                <li key={item.id}>
+                  {/* 번호표시 */}
+                  {getGlobalIndex(index)}
+                  {/* 체크박스 */}
+                  <input
+                    type="checkbox"
+                    checked={item.completed}
+                    onChange={() => handleToggle(item.id)}
+                  />
+                  {/* 제목과 날짜출력 */}
+                  <div>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={e => setEditingTitle(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            handleEditSave(item.id);
+                          } else if (e.key === 'Escape') {
+                            handleEditCancel();
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span>{item.title}</span>
+                    )}
+                    <span>작성일 : {formatDate(item.created_at)}</span>
+                  </div>
+                  {/* 버튼들 */}
                   {editingId === item.id ? (
-                    <input
-                      type="text"
-                      value={editingTitle}
-                      onChange={e => setEditingTitle(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          handleEditSave(item.id);
-                        } else if (e.key === 'Escape') {
-                          handleEditCancel();
-                        }
-                      }}
-                    />
+                    <>
+                      <button onClick={() => handleEditSave(item.id)}>저장</button>
+                      <button onClick={() => handleEditCancel()}>취소</button>
+                    </>
                   ) : (
-                    <span>{item.title}</span>
+                    <>
+                      <button onClick={() => handleEditStart(item)}>수정</button>
+                      <button onClick={() => handleDelete(item.id)}>삭제</button>
+                    </>
                   )}
-                  <span>작성일 : {formatDate(item.created_at)}</span>
-                </div>
-                {/* 버튼들 */}
-                {editingId === item.id ? (
-                  <>
-                    <button onClick={() => handleEditSave(item.id)}>저장</button>
-                    <button onClick={() => handleEditCancel()}>취소</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => handleEditStart(item)}>수정</button>
-                    <button onClick={() => handleDelete(item.id)}>삭제</button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </InfiniteScroll>
         </div>
       )}
     </div>
@@ -845,79 +894,23 @@ const InfiniteTodoList = () => {
 
 function TodosInfinitePage() {
   return (
-    <InfiniteScrollProvider itemsPerPage={5}>
-      <div>
-        <h2>무한 스크롤 Todo 목록</h2>
+    <div>
+      <InfiniteScrollProvider itemsPerPage={10}>
         <div>
-          <InfiniteTodoWrite />
+          <h2>무한 스크롤 Todo 목록</h2>
+          <div>
+            <InfiniteTodoWrite />
+          </div>
+          <div>
+            <InfiniteTodoList />
+          </div>
         </div>
-        <div>
-          <InfiniteTodoList />
-        </div>
-      </div>
-    </InfiniteScrollProvider>
+      </InfiniteScrollProvider>
+    </div>
   );
 }
 
 export default TodosInfinitePage;
-```
-
-## 5. 무한 스크롤 구현
-
-- `Intersection Observer` 를 이용함.
-- `웹브라우저에 내장된 API` 중 하나.
-- 요소 즉, 대상이 되는 태그(element)가 뷰포트(화면에 보이는 영역) 또는 특정 스크롤 영역과 교차(intersect)하는지 감시하는 도구.
-  - intersect 는 DOM 요소가 화면에 보이거나, 사라지거나 등을 말함.
-- `스크롤 이벤트를 사용하지 않고도 자동으로 화면에 보이는 순간을 체크`할 수 있음.
-
-### 5.1. 기본 문법
-
-```js
-const observer = new IntersectionObserver((entries, observer) => {
-  // entries: 관찰 중인 모든 요소의 교차 상태 목록
-  // observer: 지금 만든 옵저버 자기 자신
-});
-
-// 특정 DOM 요소 관찰 시작
-observer.observe(domElement);
-
-// 관찰 해제
-observer.unobserve(domElement);
-
-// 모든 관찰 중지
-observer.disconnect();
-```
-
-### 5.2. 예제
-
-- `<div id="target"></div>`
-
-```js
-const target = document.getElementById('target');
-
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      console.log('화면에 보임!', entry);
-    } else {
-      console.log('화면에서 나감!', entry);
-    }
-  });
-});
-
-observer.observe(target);
-```
-
-### 5.3. 옵션
-
-```js
-const options = {
-  root: null, // 관찰 기준 영역 (null이면 브라우저 뷰포트)
-  rootMargin: '0px', // root 바깥쪽 여백 (미리 감지하고 싶을 때 '200px' 같은 값)
-  threshold: 0.5, // 요소가 50% 보였을 때만 트리거
-};
-
-const observer = new IntersectionObserver(callback, options);
 ```
 
 ## 6. 라우터 추가

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import InfiniteScroll from 'react-infinite-scroll-component';
 import { useAuth } from '../contexts/AuthContext';
 import { InfiniteScrollProvider, useInfiniteScroll } from '../contexts/InfiniteScrollContext';
 import { getProfile } from '../lib/profile';
@@ -59,7 +60,6 @@ const InfiniteTodoList = () => {
     toggleTodo,
     deleteTodo,
     loadingInitialTodos,
-    loadingMore,
     loadMoreTodos,
     hasMore,
   } = useInfiniteScroll();
@@ -76,90 +76,6 @@ const InfiniteTodoList = () => {
     };
     loadProfile();
   }, [user?.id]);
-
-  // Intersection Observer 를 이용한 무한 스크롤
-
-  // 1. IntersectionObserver 를 저장하는 ref
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  // 2. 목록 더보기 할 때 보여줄 로딩창
-  const loadingRef = useRef<HTMLDivElement | null>(null);
-  // 3. 연속 로딩 방지를 위한 타이머 ref
-  const debounceTimerRef = useRef<any>(null);
-  // 4. 데이터 로드 스크롤 바 하단에 위치문제로 연속 호출 되는 부분 제어
-  const [isInCooldown, setIsInCooldown] = useState(false);
-  const cooldownTimerRef = useRef<any>(null);
-
-  useEffect(() => {
-    // 화면에서 사라질 때 메모리 정리 : 클린업 함수
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
-      }
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, []);
-
-  // 연속 로딩 방지
-  useEffect(() => {
-    if (loadingMore) {
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
-      }
-    } else {
-      // observerRef 를 비활성화 하기 위해서
-      setIsInCooldown(true);
-      cooldownTimerRef.current = setTimeout(() => {
-        setIsInCooldown(false);
-      }, 1000);
-    }
-  }, [loadingMore]);
-
-  /**
-   * 목록에 마지막 요소를 등록한다.
-   * 목록의 마지막 요소가 화면에 들어오면 isIntersecting 을 true 로
-   * 아직 더 불러올 데이터가 있으면 loadMore 를 실행 ==> 데이터 추가
-   * 새로운 목록이 랜더링 되면 새로운 마지막 요소에 다시 옵저버를 붙임
-   * 위의 과정을 반복 ==> 끝까지 반복
-   */
-
-  // 마지막 todo 항목이 화면에 보이면 자동으로 다음 데이터를 불러들이는 함수
-  // 여기서는 useCallback 을 사용한다.
-  // - 함수가 리렌더링 될때 마다 새롭게 만들면 성능 이슈가 있다.
-  // - 함수가 새로 만들어져야 하는 경우는 의존성 배열에 추가하겠다.
-  // - 의존성 배열에는 loadingMore, hasMore, loadMoreTodos 변경될 때
-
-  const lastTodoElementRef = useCallback(
-    (node: HTMLLIElement | null) => {
-      if (observerRef.current) observerRef.current.disconnect();
-      if (loadingMore || !hasMore || !node || isInCooldown) return;
-
-      observerRef.current = new IntersectionObserver(
-        entries => {
-          if (entries[0].isIntersecting && hasMore && !loadingMore && !isInCooldown) {
-            if (debounceTimerRef.current) {
-              clearTimeout(debounceTimerRef.current);
-            }
-            debounceTimerRef.current = setTimeout(() => {
-              if (!loadingMore && hasMore && !isInCooldown) {
-                loadMoreTodos();
-              }
-            }, 500);
-          }
-        },
-        {
-          threshold: 0.8,
-        },
-      );
-
-      observerRef.current.observe(node);
-    },
-    [loadingMore, hasMore, loadMoreTodos, isInCooldown],
-  );
 
   // 번호 계산 함수(최신글이 높은 번호가지도록)
   const getGlobalIndex = (index: number) => {
@@ -243,65 +159,64 @@ const InfiniteTodoList = () => {
       {todos.length === 0 ? (
         <p>등록된 할일이 없습니다.</p>
       ) : (
-        <div>
-          <ul>
-            {todos.map((item, index) => (
-              // 마지막 요소 태그인지를 연결한다. (마지막 배열의 index 인지 비교하면 됨.)
-              <li key={item.id} ref={index === todos.length - 1 ? lastTodoElementRef : null}>
-                {/* 번호표시 */}
-                {getGlobalIndex(index)}
-                {/* 체크박스 */}
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  onChange={() => handleToggle(item.id)}
-                />
-                {/* 제목과 날짜출력 */}
-                <div>
+        // 무한 스크롤 라이브러리 적용
+        <div style={{ height: 500, overflow: 'auto' }}>
+          <InfiniteScroll
+            dataLength={todos.length}
+            next={loadMoreTodos}
+            hasMore={hasMore}
+            height={500}
+            loader={<div>데이터를 불러오는 중...</div>}
+            endMessage={<div>모든 데이터를 불러왔습니다.</div>}
+          >
+            <ul>
+              {todos.map((item, index) => (
+                <li key={item.id}>
+                  {/* 번호표시 */}
+                  {getGlobalIndex(index)}
+                  {/* 체크박스 */}
+                  <input
+                    type="checkbox"
+                    checked={item.completed}
+                    onChange={() => handleToggle(item.id)}
+                  />
+                  {/* 제목과 날짜출력 */}
+                  <div>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={e => setEditingTitle(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            handleEditSave(item.id);
+                          } else if (e.key === 'Escape') {
+                            handleEditCancel();
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span>{item.title}</span>
+                    )}
+                    <span>작성일 : {formatDate(item.created_at)}</span>
+                  </div>
+                  {/* 버튼들 */}
                   {editingId === item.id ? (
-                    <input
-                      type="text"
-                      value={editingTitle}
-                      onChange={e => setEditingTitle(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          handleEditSave(item.id);
-                        } else if (e.key === 'Escape') {
-                          handleEditCancel();
-                        }
-                      }}
-                    />
+                    <>
+                      <button onClick={() => handleEditSave(item.id)}>저장</button>
+                      <button onClick={() => handleEditCancel()}>취소</button>
+                    </>
                   ) : (
-                    <span>{item.title}</span>
+                    <>
+                      <button onClick={() => handleEditStart(item)}>수정</button>
+                      <button onClick={() => handleDelete(item.id)}>삭제</button>
+                    </>
                   )}
-                  <span>작성일 : {formatDate(item.created_at)}</span>
-                </div>
-                {/* 버튼들 */}
-                {editingId === item.id ? (
-                  <>
-                    <button onClick={() => handleEditSave(item.id)}>저장</button>
-                    <button onClick={() => handleEditCancel()}>취소</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => handleEditStart(item)}>수정</button>
-                    <button onClick={() => handleDelete(item.id)}>삭제</button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </InfiniteScroll>
         </div>
-      )}
-      {/* 무한 목록 로딩용 인디케이터 */}
-      {loadingMore && (
-        <div ref={loadingRef} style={{ color: 'red', fontSize: '30px' }}>
-          더 많은 할 일을 불러오는 중 ...
-        </div>
-      )}
-      {/* 더이상 로드할 데이터가 없을 때 */}
-      {todos.length > 0 && !hasMore && (
-        <div style={{ color: 'red', fontSize: `30px` }}>모든 데이터를 불러왔습니다.</div>
       )}
     </div>
   );
@@ -309,17 +224,19 @@ const InfiniteTodoList = () => {
 
 function TodosInfinitePage() {
   return (
-    <InfiniteScrollProvider itemsPerPage={5}>
-      <div>
-        <h2>무한 스크롤 Todo 목록</h2>
+    <div>
+      <InfiniteScrollProvider itemsPerPage={10}>
         <div>
-          <InfiniteTodoWrite />
+          <h2>무한 스크롤 Todo 목록</h2>
+          <div>
+            <InfiniteTodoWrite />
+          </div>
+          <div>
+            <InfiniteTodoList />
+          </div>
         </div>
-        <div>
-          <InfiniteTodoList />
-        </div>
-      </div>
-    </InfiniteScrollProvider>
+      </InfiniteScrollProvider>
+    </div>
   );
 }
 

@@ -24,7 +24,7 @@ type InfiniteScrollState = {
 };
 const initialState: InfiniteScrollState = {
   todos: [],
-  hasMore: false,
+  hasMore: true,
   totalCount: 0,
   loading: false,
   loadingMore: false,
@@ -92,7 +92,7 @@ function reducer(state: InfiniteScrollState, action: InfiniteScrollAction): Infi
       // 추가
       return {
         ...state,
-        todos: [...action.payload.todos, ...state.todos],
+        todos: [...state.todos, ...action.payload.todos],
         hasMore: action.payload.hasMore,
         loadingMore: false,
       };
@@ -120,6 +120,7 @@ function reducer(state: InfiniteScrollState, action: InfiniteScrollAction): Infi
         todos: state.todos.map(item =>
           item.id === action.payload.id ? { ...item, title: action.payload.title } : item,
         ),
+        totalCount: Math.max(0, state.totalCount - 1),
       };
     case InfiniteScrollActionType.RESET:
       return state;
@@ -198,6 +199,7 @@ export const InfiniteScrollProvider: React.FC<InfiniteScrollProviderProps> = ({
           user_id: item.user_id,
         })),
       );
+      // 데이터가 실제로 로드되었을 때만 상태 업데이트
       dispatch({
         type: InfiniteScrollActionType.APPEND_TODOS,
         payload: { todos: result.todos, hasMore: result.hasMore },
@@ -217,7 +219,7 @@ export const InfiniteScrollProvider: React.FC<InfiniteScrollProviderProps> = ({
         return;
       }
       // DB 업데이트 후 State 업데이트
-      dispatch({ type: InfiniteScrollActionType.ADD_TODO, payload: { todo:result } });
+      dispatch({ type: InfiniteScrollActionType.ADD_TODO, payload: { todo: result } });
     } catch (error) {
       console.log(`새 Todo 등록 오류 : ${error}`);
     }
