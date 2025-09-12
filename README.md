@@ -1,292 +1,331 @@
-# profiles 테이블에 추가 정보시 오류 발생
+# Infinity Scroll Loop 리스트
 
-- RLS 정책으로 회원이 아니면 CRUD 를 하지못한다.
+- 스크롤시 추가 목록구현 (UI가 SNS 서비스에 좋다.)
 
-## 1. 기존 방식
+## 1. /src/services/todoService.ts
 
-- 회원가입 > profiles 에 insert 진행함 (오류발생)
-- 회원가입 > 이메일인증 > 인증 확인 > profiles 에 insert 필요.
-
-## 2. 회원가입 진행 과정 개선
-
-- /src/pages/SignUpPage.tsx 수정
-
-```tsx
-import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import { createProfile } from '../lib/profile';
-import type { ProfileInsert } from '../types/TodoTypes';
-
-function SignUpPage() {
-  const { signUp } = useAuth();
-  const [email, setEmail] = useState<string>('');
-  const [pw, setPw] = useState<string>('');
-  // 추가 정보 (닉네임)
-  const [nickName, setNickName] = useState<string>('');
-  const [msg, setMsg] = useState<string>('');
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    // 웹 브라우저 갱신 막기
-    e.preventDefault();
-
-    if (!email.trim()) {
-      alert('이메일을 입력하세요.');
-      return;
-    }
-
-    if (!pw.trim()) {
-      alert('비밀번호를 입력하세요.');
-      return;
-    }
-    if (pw.length < 6) {
-      alert('비밀번호는 최소 6자 이상입니다.');
-      return;
-    }
-
-    if (!nickName.trim()) {
-      alert('닉네임을 입력하세요.');
-      return;
-    }
-
-    // 회원가입 하기 및 추가정보 입력하기
-    const { error, data } = await supabase.auth.signUp({
-      email,
-      password: pw,
-      options: {
-        // 회원 가입 후 이메일로 인증 확인시 리다이렉트 될 URL
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        // 잠시 추가정보를 보관함.
-        // Supabase 에서 auth 에는 추가적인 정보를 저장하는 객체가 존재
-        // 공식적인 명칭은 metadata 라고 한다.
-        // 이메일 인증 후에 프로필 생성시에 사용하려고 보관
-        data: { nickName: nickName },
-      },
-    });
-    if (error) {
-      setMsg(`회원가입 오류 : ${error}`);
-    } else {
-      setMsg(
-        '회원가입이 성공했습니다. 이메일 인증 링크를 확인해주세요. 인증 완료 후 프로필이 자동으로 생성됩니다.',
-      );
-      // 회원가입 성공했으므로 profiles 도 채워준다.
-      if (data?.user?.id) {
-        // 프로필을 추가한다.
-        const newUser: ProfileInsert = { id: data.user.id, nickname: nickName };
-        const result = await createProfile(newUser);
-        if (result) {
-          // 프로필 추가가 성공한 경우
-          setMsg('회원가입 및 프로필 생성 성공했습니다. 이메일 인증 링크를 확인해주세요.');
-        } else {
-          // 프로필 추가가 실패한 경우
-          setMsg('회원가입은 성공, 프로필 생성은 실패했습니다.');
-        }
-      } else {
-        setMsg('회원가입이 성공했습니다. 이메일 인증 링크를 확인해주세요.');
-      }
-    }
-  };
-  return (
-    <div>
-      <h2>Todo 서비스 회원가입</h2>
-      <div>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="이메일"
-          />
-          <br />
-          <input
-            type="password"
-            value={pw}
-            onChange={e => setPw(e.target.value)}
-            placeholder="비밀번호"
-          />
-          <br />
-          <input
-            type="text"
-            value={nickName}
-            onChange={e => setNickName(e.target.value)}
-            placeholder="닉네임"
-          />
-          <br />
-          <button type="submit">회원가입</button>
-        </form>
-        <p>{msg}</p>
-      </div>
-    </div>
-  );
-}
-
-export default SignUpPage;
-```
-
-- /src/pages/AuthCallback.tsx 변경
-
-```tsx
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import type { ProfileInsert } from '../types/TodoTypes';
-import { createProfile } from '../lib/profile';
-
-/**
- *  - 인증 콜백 URL 처리
- *  - 사용자에게 인증 진행 상태 안내
- *  - 자동 인증 처리 완료 안내
- */
-function AuthCallback() {
-  const [msg, setMsg] = useState<string>('인증 처리 중 ...');
-
-  // 사용자가 이메일 확인 클릭하면 실행되는 곳
-  // 인증 정보에 담겨진 nickname 을 알아내서 여기서 profiles 를 추가
-  const handleAuthCallback = async (): Promise<void> => {
-    try {
-      // URL 에서 세션(웹 브라우저 정보시 사라지는 데이터)에 담겨진 정보를 가져온다.
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        setMsg(`인증 오류 : ${error.message}`);
-        return;
-      }
-      // 인증 데이터가 존재함.
-      if (data.session?.user) {
-        const user = data.session.user;
-        // 추가적인 정보 파악 가능 (metadata 라고 함.)
-        const nickName = user.user_metadata.nickName;
-
-        // 먼저 프로필이 이미 존재하는지 확인이 필요
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', user.id)
-          .single();
-        // 존재하지 않는 id 이고, nickName 내용이 있다면
-        // profiles 에 insert 한다.
-        if (!existingProfile && nickName) {
-          // 프로필이 없고 닉네임이 존재하므로 프로필 생성한다.
-          const newProfile: ProfileInsert = { id: user.id, nickname: nickName };
-          const result = await createProfile(newProfile);
-          if (result) {
-            setMsg('✔ 이메일 인증 완료. 프로필 생성 성공! 홈으로 이동하세요.');
-          } else {
-            setMsg('✔ 이메일 인증 완료. 프로필 생성 실패 : 관리자에게 문의하세요.');
-          }
-        } else {
-          setMsg('✔ 이메일 인증 완료. 홈으로 이동하세요.');
-        }
-      } else {
-        setMsg('인증 정보가 없습니다. 다시 가입해주세요.');
-      }
-    } catch (err) {
-      console.log(`인증 콜백 함수 처리 오류 : ${err}`);
-      setMsg('인증 처리 중 오류가 발생했습니다.');
-    }
-  };
-
-  useEffect(() => {
-    // setTimeout 은 1초 뒤에 함수 실행
-    const timer = setTimeout(handleAuthCallback, 1000);
-    // 클린업 함수
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
-
-  return (
-    <div>
-      <h2>인증 페이지</h2>
-      <h2>{msg}</h2>
-    </div>
-  );
-}
-
-export default AuthCallback;
-```
-
-- /src/lib/profile.ts 수정
+- 무한 스크롤 todos 목록 조회기능 추가
 
 ```ts
-// 사용자 프로필 생성
-const createProfile = async (newUserProfile: ProfileInsert): Promise<boolean> => {
+// 무한 스크롤 todo 목록 조회
+export const getTodosInfinite = async (
+  offset: number = 0,
+  limit: number = 5,
+): Promise<{ todos: Todos[]; hasMore: boolean; totalCount: number }> => {
   try {
-    const { data, error } = await supabase.from('profiles').insert([{ ...newUserProfile }]);
-    if (error) {
-      console.log(`프로필 추가에 실패 : `, {
-        message: error.message,
-        detail: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
-      return false;
+    // 전체 todos 의 Row 개수
+    const { count, error: countError } = await supabase
+      .from('todos')
+      .select('*', { count: 'exact', head: true });
+    if (countError) {
+      throw new Error(`getTodosInfinite count 오류 : ${countError.message}`);
     }
-    console.log(`프로필 생성 성공 : `, data);
-    return true;
+
+    // 무한 스크롤 데이터 조회
+    const { data, error: limitError } = await supabase
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (limitError) {
+      throw new Error(`getTodosInfinite limit 오류 : ${limitError.message}`);
+    }
+
+    // 전체 개수
+    const totalCount = count || 0;
+
+    // 앞으로 더 가져올 것이 있는가?
+    const hasMore = offset + limit < totalCount;
+
+    // 최종 값을 리턴함
+    return {
+      todos: data || [],
+      hasMore,
+      totalCount,
+    };
   } catch (error) {
-    console.log(`프로필 생성 오류 : ${error}`);
-    return false;
+    console.log(`getTodosInfinite 오류 : ${error}`);
+    throw new Error(`getTodosInfinite 오류 : ${error}`);
   }
 };
 ```
 
-# 일반적 네비게이션 진행하기
+## 2. 상태관리(Context State)
 
-- npm : https://www.npmjs.com/package/react-paginate
-- 직접 구현 진행.
+- 별도로 구성해서 진행해봄.
+- /src/contexts/InfiniteScrollContext.tsx
 
-## 1. 구현 시나리오
+### 2.1. 초기값
 
-- 한 화면에 10개의 목록을 표시함.
-- 페이지 번호로 네비게이션 함.
-- 전체 개수 및 현재 페이지 정보 출력함.
-- supabase 에 todos 를 이용함.
+```tsx
+import type { Todo } from '../types/TodoTypes';
 
-## 2. 코드 구현
-
-## 2.1. /src/service/todoService.ts
-
-- 페이지 변화와 제한 개수를 이용해서 추출하기 함수
-
-```ts
-// 페이지 단위로 조각내서 목록 출력하기
-// getTodosPaginated(1, 10개)
-// getTodosPaginated(2, 10개)
-// getTodosPaginated(페이지번호, 10개)
-export const getTodosPaginated = async (
-  page: number = 1,
-  limit: number = 10,
-): Promise<{ todos: Todo[]; totalCount: number; totalPages: number; currentPage: number }> => {
-  // 시작
-  // page=2, limit 10
-  // (2-1) * 10 => 10
-  const from = (page - 1) * limit;
-  // 제한
-  // 10 + 10 - 1 => 19
-  const to = from + 1 + limit - 1;
-
-  // 전체 데이터 개수 (row 의 개수)
-  const { count } = await supabase.from('todos').select('*', { count: 'exact', head: true });
-
-  // from 부터 to 까지의 상세 데이터
-  const { data } = await supabase
-    .from('todos')
-    .select('*')
-    .order(`created_at`, { ascending: false })
-    .range(from, to);
-  // 편하게 활용
-  const totalCount = count || 0;
-  // 몇페이지 인지 계산 (소숫점은 올림)
-  const totalPages = Math.ceil(totalCount / limit);
-  return {
-    todos: data || [],
-    totalCount,
-    totalPages,
-    currentPage: page,
-  };
+// 1. 초기값
+type InfiniteScrollState = {
+  todos: Todo[];
+  hasMore: boolean;
+  totalCount: number;
+  loading: boolean;
+  loadingMore: boolean;
+};
+const initialState: InfiniteScrollState = {
+  todos: [],
+  hasMore: false,
+  totalCount: 0,
+  loading: false,
+  loadingMore: false,
 };
 ```
 
-### 2.2. /src/contexts/TodoContext.tsx
+### 2.2. 액션타입
+
+```tsx
+// 2. Action의 타입 정의
+enum InfiniteScrollActionType {
+  SET_LOADING = 'SET_LOADING',
+  SET_LOADING_MORE = 'SET_LOADING_MORE',
+  SET_TODOS = 'SET_TODOS',
+  APPEND_TODOS = 'APPEND_TODOS',
+  ADD_TODO = 'ADD_TODO',
+  TOGGLE_TODO = 'TOGGLE_TODO',
+  DELETE_TODO = 'DELETE_TODO',
+  EDIT_TODO = 'EDIT_TODO',
+  RESET = 'RESET',
+}
+
+type SetLoadingAction = { type: InfiniteScrollActionType.SET_LOADING; payload: boolean };
+type SetLoadingMoreAction = { type: InfiniteScrollActionType.SET_LOADING_MORE; payload: boolean };
+type SetTodosAction = {
+  type: InfiniteScrollActionType.SET_TODOS;
+  payload: { todos: Todo[]; hasMore: boolean; totalCount: number };
+};
+type AppendTodosAction = { type: InfiniteScrollActionType.APPEND_TODOS; payload: boolean };
+type AddAction = { type: InfiniteScrollActionType.ADD_TODO; payload: { todo: Todo } };
+type ToggleAction = { type: InfiniteScrollActionType.TOGGLE_TODO; payload: number };
+type DeleteAction = { type: InfiniteScrollActionType.DELETE_TODO; payload: number };
+type EditAction = {
+  type: InfiniteScrollActionType.EDIT_TODO;
+  payload: { id: number; title: string };
+};
+type ResetAction = { type: InfiniteScrollActionType.RESET };
+type InfiniteScrollAction =
+  | SetLoadingAction
+  | SetLoadingMoreAction
+  | SetTodosAction
+  | AppendTodosAction
+  | AddAction
+  | ToggleAction
+  | DeleteAction
+  | EditAction
+  | ResetAction;
+```
+
+### 2.3. 리듀서 함수
+
+```tsx
+// 3. 리듀서 함수
+function reducer(state: InfiniteScrollState, action: InfiniteScrollAction): InfiniteScrollState {
+  switch (action.type) {
+    case InfiniteScrollActionType.SET_LOADING:
+      return { ...state, loading: action.payload };
+    case InfiniteScrollActionType.SET_LOADING_MORE:
+      return { ...state, loadingMore: action.payload };
+    case InfiniteScrollActionType.SET_TODOS:
+      return {
+        ...state,
+        todos: action.payload.todos,
+        hasMore: action.payload.hasMore,
+        totalCount: action.payload.totalCount,
+        loading: false,
+        loadingMore: false,
+      };
+    case InfiniteScrollActionType.APPEND_TODOS:
+      // 추가
+      return {
+        ...state,
+        todos: [...action.payload.todos, ...state.todos],
+        hasMore: action.payload.hasMore,
+        loadingMore: false,
+      };
+    case InfiniteScrollActionType.ADD_TODO:
+      return {
+        ...state,
+        todos: [action.payload.todo, ...state.todos],
+        totalCount: state.totalCount + 1,
+      };
+    case InfiniteScrollActionType.TOGGLE_TODO:
+      return {
+        ...state,
+        todos: state.todos.map(item =>
+          item.id === action.payload.id ? { ...item, completed: !item.completed } : item,
+        ),
+      };
+    case InfiniteScrollActionType.DELETE_TODO:
+      return {
+        ...state,
+        todos: state.todos.filter(item => item.id !== action.payload.id),
+      };
+    case InfiniteScrollActionType.EDIT_TODO:
+      return {
+        ...state,
+        todos: state.todos.map(item =>
+          item.id === action.payload.id ? { ...item, title: action.payload.title } : item,
+        ),
+      };
+    case InfiniteScrollActionType.RESET:
+      return state;
+    default:
+      return initialState;
+  }
+}
+```
+
+### 2.4. 컨텍스트 생성
+
+```tsx
+// 4. Context 생성
+type InfiniteScrollContextValue = {
+  todos: Todo[];
+  hasMore: boolean;
+  totalCount: number;
+  loading: boolean;
+  loadingMore: boolean;
+  loadingInitialTodos: () => Promise<void>;
+  loadMoreTodos: () => Promise<void>;
+  addTodo: (todo: Todo) => void;
+  toggleTodo: (id: number) => void;
+  deleteTodo: (id: number) => void;
+  editTodo: (id: number, title: string) => void;
+  resetTodo: () => void;
+};
+const InfiniteScrollContext = createContext<InfiniteScrollContextValue | null>(null);
+```
+
+### 2.5. Provider 생성
+
+```tsx
+// 5. Provider 생성
+// interface InfiniteScrollProviderProps {
+//   children?: React.ReactNode;
+//   itemsPerPage: number;
+// }
+interface InfiniteScrollProviderProps extends PropsWithChildren {
+  itemsPerPage?: number;
+}
+export const InfiniteScrollProvider: React.FC<InfiniteScrollProviderProps> = ({
+  children,
+  itemsPerPage = 5,
+}) => {
+  // useReducer 를 활용
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  // 초기 데이터 로드
+  const loadingInitialTodos = async (): Promise<void> => {
+    try {
+      // 초기 로딩 활성화
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING, payload: true });
+      const result = await getTodosInfinite(0, itemsPerPage);
+      console.log(
+        `초기 로드된 데이터`,
+        result.todos.map(item => ({
+          id: item.id,
+          title: item.title,
+          create_at: item.created_at,
+          user_id: item.user_id,
+        })),
+      );
+      dispatch({
+        type: InfiniteScrollActionType.SET_TODOS,
+        payload: { todos: result.todos, hasMore: result.hasMore, totalCount: result.totalCount },
+      });
+    } catch (error) {
+      console.log(`초기 데이터 로드 실패 : ${error}`);
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING, payload: false });
+    }
+  };
+
+  // 데이터 더보기 기능
+  const loadMoreTodos = async (): Promise<void> => {
+    try {
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING_MORE, payload: true });
+      const result = await getTodosInfinite(state.todos.length, itemsPerPage);
+      console.log(
+        `추가 로드된 데이터`,
+        result.todos.map(item => ({
+          id: item.id,
+          title: item.title,
+          create_at: item.created_at,
+          user_id: item.user_id,
+        })),
+      );
+      dispatch({
+        type: InfiniteScrollActionType.APPEND_TODOS,
+        payload: { todos: result.todos, hasMore: result.hasMore },
+      });
+    } catch (error) {
+      console.log(`추가 데이터 로드 실패 : ${error}`);
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING_MORE, payload: false });
+    }
+  };
+
+  // Todo 추가
+  const addTodo = (todo: Todo): void => {
+    dispatch({ type: InfiniteScrollActionType.ADD_TODO, payload: { todo } });
+  };
+  // Todo 토글
+  const toggleTodo = (id: number): void => {
+    dispatch({ type: InfiniteScrollActionType.TOGGLE_TODO, payload: { id } });
+  };
+  // Todo 삭제
+  const deleteTodo = (id: number): void => {
+    dispatch({ type: InfiniteScrollActionType.DELETE_TODO, payload: { id } });
+  };
+  // Todo 수정
+  const editTodo = (id: number, title: string): void => {
+    dispatch({ type: InfiniteScrollActionType.EDIT_TODO, payload: { id, title } });
+  };
+  // Context 상태 초기화
+  const resetTodo = (): void => {
+    dispatch({ type: InfiniteScrollActionType.RESET });
+  };
+
+  // 최초 실행시 데이터 로드
+  useEffect(() => {
+    loadingInitialTodos();
+  }, []);
+
+  const value: InfiniteScrollContextValue = {
+    todos: state.todos,
+    hasMore: state.hasMore,
+    totalCount: state.totalCount,
+    loading: state.loading,
+    loadingMore: state.loadingMore,
+    loadingInitialTodos,
+    loadMoreTodos,
+    addTodo,
+    toggleTodo,
+    deleteTodo,
+    editTodo,
+    resetTodo,
+  };
+  return <InfiniteScrollContext.Provider value={value}>{children}</InfiniteScrollContext.Provider>;
+};
+```
+
+### 2.6. 커스텀 훅
+
+```tsx
+// 6. 커스텀 훅
+export function useInfiniteScroll(): InfiniteScrollContextValue {
+  const ctx = useContext(InfiniteScrollContext);
+  if (!ctx) {
+    throw new Error('InfiniteScrollContext 컨텍스트가 없어요.');
+  }
+  return ctx;
+}
+```
+
+## 3. 전체 Context 코드
 
 ```tsx
 import React, {
@@ -296,389 +335,679 @@ import React, {
   useReducer,
   type PropsWithChildren,
 } from 'react';
-// 전체 DB 가져오기
 import type { Todo } from '../types/TodoTypes';
-import { getTodosPaginated } from '../services/todoService';
+import {
+  getTodosInfinite,
+  updateTodo,
+  toggleTodo as updateToggleTodo,
+  deleteTodo as deletedServiceTodo,
+  createTodo,
+} from '../services/todoService';
 
-// 1. 초기값 형태가 페이지 객체 형태로 추가
-type TodosState = { todos: Todo[]; totalCount: number; totalPages: number; currentPage: number };
-
-const initialState: TodosState = {
-  todos: [],
-  totalCount: 0,
-  totalPages: 0,
-  currentPage: 1,
+// 1. 초기값
+type InfiniteScrollState = {
+  todos: Todo[];
+  hasMore: boolean;
+  totalCount: number;
+  loading: boolean;
+  loadingMore: boolean;
 };
-// 2. 리듀서
-// action 은 { type : "문자열 ", payload: 재료 } 형태
-enum TodoActionType {
-  ADD = 'ADD',
-  DELETE = 'DELETE',
-  TOGGLE = 'TOGGLE',
-  EDIT = 'EDIT',
-  // Supabase todos 의 목록읽기
+const initialState: InfiniteScrollState = {
+  todos: [],
+  hasMore: false,
+  totalCount: 0,
+  loading: false,
+  loadingMore: false,
+};
+
+// 2. Action의 타입 정의
+enum InfiniteScrollActionType {
+  SET_LOADING = 'SET_LOADING',
+  SET_LOADING_MORE = 'SET_LOADING_MORE',
   SET_TODOS = 'SET_TODOS',
+  APPEND_TODOS = 'APPEND_TODOS',
+  ADD_TODO = 'ADD_TODO',
+  TOGGLE_TODO = 'TOGGLE_TODO',
+  DELETE_TODO = 'DELETE_TODO',
+  EDIT_TODO = 'EDIT_TODO',
+  RESET = 'RESET',
 }
 
-type AddAction = { type: TodoActionType.ADD; payload: { todo: Todo } };
-type DeleteAction = { type: TodoActionType.DELETE; payload: { id: number } };
-type ToggleAction = { type: TodoActionType.TOGGLE; payload: { id: number } };
-type EditAction = { type: TodoActionType.EDIT; payload: { id: number; title: string } };
-// Supabase 목록으로 state.todos 배열을 채워라.
+type SetLoadingAction = { type: InfiniteScrollActionType.SET_LOADING; payload: boolean };
+type SetLoadingMoreAction = { type: InfiniteScrollActionType.SET_LOADING_MORE; payload: boolean };
 type SetTodosAction = {
-  type: TodoActionType.SET_TODOS;
-  payload: { todos: Todo[]; totalCount: number; currentPage: number; totalPages: number };
+  type: InfiniteScrollActionType.SET_TODOS;
+  payload: { todos: Todo[]; hasMore: boolean; totalCount: number };
 };
+type AppendTodosAction = {
+  type: InfiniteScrollActionType.APPEND_TODOS;
+  payload: { todos: Todo[]; hasMore: boolean };
+};
+type AddAction = { type: InfiniteScrollActionType.ADD_TODO; payload: { todo: Todo } };
+type ToggleAction = { type: InfiniteScrollActionType.TOGGLE_TODO; payload: { id: number } };
+type DeleteAction = { type: InfiniteScrollActionType.DELETE_TODO; payload: { id: number } };
+type EditAction = {
+  type: InfiniteScrollActionType.EDIT_TODO;
+  payload: { id: number; title: string };
+};
+type ResetAction = { type: InfiniteScrollActionType.RESET };
+type InfiniteScrollAction =
+  | SetLoadingAction
+  | SetLoadingMoreAction
+  | SetTodosAction
+  | AppendTodosAction
+  | AddAction
+  | ToggleAction
+  | DeleteAction
+  | EditAction
+  | ResetAction;
 
-function reducer(
-  state: TodosState,
-  action: AddAction | DeleteAction | ToggleAction | EditAction | SetTodosAction,
-) {
+// 3. 리듀서 함수
+function reducer(state: InfiniteScrollState, action: InfiniteScrollAction): InfiniteScrollState {
   switch (action.type) {
-    case TodoActionType.ADD: {
-      const { todo } = action.payload;
-      return { ...state, todos: [todo, ...state.todos] };
-    }
-
-    case TodoActionType.TOGGLE: {
-      const { id } = action.payload;
-      const arr = state.todos.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item,
-      );
-      return { ...state, todos: arr };
-    }
-    case TodoActionType.DELETE: {
-      const { id } = action.payload;
-      const arr = state.todos.filter(item => item.id !== id);
-      return { ...state, todos: arr };
-    }
-    case TodoActionType.EDIT: {
-      const { id, title } = action.payload;
-      const arr = state.todos.map(item => (item.id === id ? { ...item, title } : item));
-      return { ...state, todos: arr };
-    }
-    // Supabase 의 목록 읽기
-    case TodoActionType.SET_TODOS: {
-      const { todos, totalCount, currentPage, totalPages } = action.payload;
-      return { ...state, todos, totalCount, currentPage, totalPages };
-    }
-    default:
+    case InfiniteScrollActionType.SET_LOADING:
+      return { ...state, loading: action.payload };
+    case InfiniteScrollActionType.SET_LOADING_MORE:
+      return { ...state, loadingMore: action.payload };
+    case InfiniteScrollActionType.SET_TODOS:
+      return {
+        ...state,
+        todos: action.payload.todos,
+        hasMore: action.payload.hasMore,
+        totalCount: action.payload.totalCount,
+        loading: false,
+        loadingMore: false,
+      };
+    case InfiniteScrollActionType.APPEND_TODOS:
+      // 추가
+      return {
+        ...state,
+        todos: [...action.payload.todos, ...state.todos],
+        hasMore: action.payload.hasMore,
+        loadingMore: false,
+      };
+    case InfiniteScrollActionType.ADD_TODO:
+      return {
+        ...state,
+        todos: [action.payload.todo, ...state.todos],
+        totalCount: state.totalCount + 1,
+      };
+    case InfiniteScrollActionType.TOGGLE_TODO:
+      return {
+        ...state,
+        todos: state.todos.map(item =>
+          item.id === action.payload.id ? { ...item, completed: !item.completed } : item,
+        ),
+      };
+    case InfiniteScrollActionType.DELETE_TODO:
+      return {
+        ...state,
+        todos: state.todos.filter(item => item.id !== action.payload.id),
+      };
+    case InfiniteScrollActionType.EDIT_TODO:
+      return {
+        ...state,
+        todos: state.todos.map(item =>
+          item.id === action.payload.id ? { ...item, title: action.payload.title } : item,
+        ),
+      };
+    case InfiniteScrollActionType.RESET:
       return state;
+    default:
+      return initialState;
   }
 }
-// 3. context 생성
-// 만들어진 Context 가 관리하는 value 의 모양
-type TodoContextValue = {
+// 4. Context 생성
+type InfiniteScrollContextValue = {
   todos: Todo[];
-  totalPages: number;
+  hasMore: boolean;
   totalCount: number;
-  currentPage: number;
-  itemsPerPage: number;
-  addTodo: (todo: Todo) => void;
-  toggleTodo: (id: number) => void;
-  deleteTodo: (id: number) => void;
-  editTodo: (id: number, editTitle: string) => void;
-  loadTodos: (page: number, limit: number) => void;
+  loading: boolean;
+  loadingMore: boolean;
+  loadingInitialTodos: () => Promise<void>;
+  loadMoreTodos: () => Promise<void>;
+  addTodo: (title: string) => Promise<void>;
+  toggleTodo: (id: number) => Promise<void>;
+  deleteTodo: (id: number) => Promise<void>;
+  editTodo: (id: number, title: string) => Promise<void>;
+  resetTodo: () => void;
 };
-const TodoConText = createContext<null | TodoContextValue>(null);
+const InfiniteScrollContext = createContext<InfiniteScrollContextValue | null>(null);
 
-// 4. provider 생성
-// 1. props 정의하기
-// interface TodoProviderProps {
+// 5. Provider 생성
+// interface InfiniteScrollProviderProps {
 //   children?: React.ReactNode;
-//   currentPage?: number;
-//   limit?: number;
+//   itemsPerPage: number;
 // }
-interface TodoProviderProps extends PropsWithChildren {
-  currentPage?: number;
-  limit?: number;
+interface InfiniteScrollProviderProps extends PropsWithChildren {
+  itemsPerPage?: number;
 }
-export const TodoProvider: React.FC<TodoProviderProps> = ({
+export const InfiniteScrollProvider: React.FC<InfiniteScrollProviderProps> = ({
   children,
-  currentPage = 1,
-  limit = 10,
-}): JSX.Element => {
-  // useReducer 로 상태관리
+  itemsPerPage = 5,
+}) => {
+  // useReducer 를 활용
   const [state, dispatch] = useReducer(reducer, initialState);
-  // dispatch 를 위한 함수 표현식 모음
-  const addTodo = (newTodo: Todo) => {
-    dispatch({ type: TodoActionType.ADD, payload: { todo: newTodo } });
-  };
-  const toggleTodo = (id: number) => {
-    dispatch({ type: TodoActionType.TOGGLE, payload: { id } });
-  };
-  const deleteTodo = (id: number) => {
-    dispatch({ type: TodoActionType.DELETE, payload: { id } });
-  };
-  const editTodo = (id: number, editTitle: string) => {
-    dispatch({ type: TodoActionType.EDIT, payload: { id, title: editTitle } });
-  };
-  // 실행시 state { todos } 를 업데이트한다.
-  // reducer 함수를 실행함.
-  const setTodos = (todos: Todo[], totalCount: number, currentPage: number, totalPages: number) => {
-    dispatch({
-      type: TodoActionType.SET_TODOS,
-      payload: { todos, totalCount, currentPage, totalPages },
-    });
-  };
-  // Supabase 의 목록 읽기 함수 표현식
-  // 비동기 데이터베이스 접근
-  // const loadTodos = async (): Promise<void> => {
-  //   try {
-  //     const result = await getTodos();
-  //     setTodos(result);
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // };
 
-  const loadTodos = async (page: number, limit: number): Promise<void> => {
+  // 초기 데이터 로드
+  const loadingInitialTodos = async (): Promise<void> => {
     try {
-      const result = await getTodosPaginated(page, limit);
-      // 현재 페이지가 비어있고 첫 페이지가 아니라면 이전페이지가 출력됨
-      if (result.todos.length === 0 && result.totalPages > 0 && page > 1) {
-        const prevPageResult = await getTodosPaginated(page - 1, limit);
-        setTodos(
-          prevPageResult.todos,
-          prevPageResult.totalCount,
-          prevPageResult.currentPage,
-          prevPageResult.totalPages,
-        );
-      } else {
-        setTodos(result.todos, result.totalCount, result.currentPage, result.totalPages);
-      }
+      // 초기 로딩 활성화
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING, payload: true });
+      const result = await getTodosInfinite(0, itemsPerPage);
+      console.log(
+        `초기 로드된 데이터`,
+        result.todos.map(item => ({
+          id: item.id,
+          title: item.title,
+          create_at: item.created_at,
+          user_id: item.user_id,
+        })),
+      );
+      dispatch({
+        type: InfiniteScrollActionType.SET_TODOS,
+        payload: { todos: result.todos, hasMore: result.hasMore, totalCount: result.totalCount },
+      });
     } catch (error) {
-      console.log(`목록 가져오기 오류 : ${error}`);
+      console.log(`초기 데이터 로드 실패 : ${error}`);
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING, payload: false });
     }
   };
 
-  // 페이지가 바뀌면 다시 실행하도록 해야 한다.
-  useEffect(() => {
-    loadTodos(currentPage, limit);
-  }, [currentPage]);
+  // 데이터 더보기 기능
+  const loadMoreTodos = async (): Promise<void> => {
+    try {
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING_MORE, payload: true });
+      const result = await getTodosInfinite(state.todos.length, itemsPerPage);
+      console.log(
+        `추가 로드된 데이터`,
+        result.todos.map(item => ({
+          id: item.id,
+          title: item.title,
+          create_at: item.created_at,
+          user_id: item.user_id,
+        })),
+      );
+      dispatch({
+        type: InfiniteScrollActionType.APPEND_TODOS,
+        payload: { todos: result.todos, hasMore: result.hasMore },
+      });
+    } catch (error) {
+      console.log(`추가 데이터 로드 실패 : ${error}`);
+      dispatch({ type: InfiniteScrollActionType.SET_LOADING_MORE, payload: false });
+    }
+  };
 
-  // value 전달할 값
-  const value: TodoContextValue = {
+  // Todo 추가
+  const addTodo = async (title: string): Promise<void> => {
+    try {
+      const result = await createTodo({ title });
+      if (!result) {
+        console.log(`글 등록에 실패하였습니다.`);
+        return;
+      }
+      // DB 업데이트 후 State 업데이트
+      dispatch({ type: InfiniteScrollActionType.ADD_TODO, payload: { todo: result } });
+    } catch (error) {
+      console.log(`새 Todo 등록 오류 : ${error}`);
+    }
+  };
+  // Todo 토글
+  const toggleTodo = async (id: number): Promise<void> => {
+    try {
+      // 현재 전달된 id 에 해당하는 todo 항목의 completed 를 파악한다.
+      const currentTodo = state.todos.find(item => item.id === id);
+      if (!currentTodo) {
+        console.log('Todo를 찾지못했습니다 : ', id);
+      }
+      const result = await updateToggleTodo(id, !currentTodo?.completed);
+      if (result) {
+        // DB 업데이트 후 state 업데이트
+        dispatch({ type: InfiniteScrollActionType.TOGGLE_TODO, payload: { id } });
+      } else {
+        console.log(`할일 상태 업데이트 실패`);
+      }
+    } catch (error) {
+      console.log(`상태변경 오류 : ${error}`);
+    }
+  };
+  // Todo 삭제
+  const deleteTodo = async (id: number): Promise<void> => {
+    try {
+      await deletedServiceTodo(id);
+      // DB 업데이트 후 state 처리
+      dispatch({ type: InfiniteScrollActionType.DELETE_TODO, payload: { id } });
+    } catch (error) {
+      console.log(`삭제 오류 : ${error}`);
+    }
+  };
+  // Todo 수정
+  const editTodo = async (id: number, title: string): Promise<void> => {
+    try {
+      const updatedTodo = await updateTodo(id, { title });
+      if (updatedTodo) {
+        // 아래는 state 만 업데이트 한다.(실제 DB에 업데이트 하고 ==> State 업데이트)
+        dispatch({ type: InfiniteScrollActionType.EDIT_TODO, payload: { id, title } });
+      } else {
+        console.log('업데이트에 실패하였습니다.');
+      }
+    } catch (error) {
+      console.log(`업데이트 오류 : ${error}`);
+    }
+  };
+  // Context 상태 초기화
+  const resetTodo = (): void => {
+    dispatch({ type: InfiniteScrollActionType.RESET });
+  };
+
+  // 최초 실행시 데이터 로드
+  useEffect(() => {
+    loadingInitialTodos();
+  }, []);
+
+  const value: InfiniteScrollContextValue = {
     todos: state.todos,
+    hasMore: state.hasMore,
     totalCount: state.totalCount,
-    totalPages: state.totalPages,
-    currentPage: state.currentPage,
-    itemsPerPage: limit,
+    loading: state.loading,
+    loadingMore: state.loadingMore,
+    loadingInitialTodos,
+    loadMoreTodos,
     addTodo,
     toggleTodo,
     deleteTodo,
     editTodo,
-    loadTodos,
+    resetTodo,
   };
-  return <TodoConText.Provider value={value}>{children}</TodoConText.Provider>;
+  return <InfiniteScrollContext.Provider value={value}>{children}</InfiniteScrollContext.Provider>;
 };
 
-// 5. custom hook 생성
-export function useTodos(): TodoContextValue {
-  const ctx = useContext(TodoConText);
+// 6. 커스텀 훅
+export function useInfiniteScroll(): InfiniteScrollContextValue {
+  const ctx = useContext(InfiniteScrollContext);
   if (!ctx) {
-    throw new Error('컨텍스트가 없습니다.');
+    throw new Error('InfiniteScrollContext 컨텍스트가 없어요.');
   }
   return ctx;
 }
 ```
 
-### 2.3. 페이지네이션을 위한 컴포넌트 생성
+## 4. 활용
 
-- /src/components/Pagination.tsx 생성 (재활용 할 수 있도록)
-
-```tsx
-import React from 'react';
-
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  totalCount: number;
-  itemsPerPage: number;
-  handleChangePage: (page: number) => void;
-}
-const Pagination = ({
-  totalCount,
-  totalPages,
-  currentPage,
-  itemsPerPage,
-  handleChangePage,
-}: PaginationProps): JSX.Element => {
-  // 시작 번호를 생성함.
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  // 마지막 번호를 생성함.
-  const endItem = Math.min(currentPage * itemsPerPage, totalCount);
-
-  // 페이지 번호 버튼 배열을 생성함
-  const getPageNumbers = () => {
-    const pages = [];
-    // 한 화면에 몇개의 버튼들을 출력할 것인가?
-    const maxVisiblePages = 5;
-    if (totalPages <= maxVisiblePages) {
-      // 현재 10 페이지 보다 적은 경우
-      for (let i = 1; i < totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // 현재 10 페이지 보다 많은 경우
-      // 시나리오
-      // ... currentpage-2 currentpage-1 currentpage currentpage+1 currentpage+2 ...
-      // 현재 페이지를 중심으로 앞뒤 2개씩 표현
-      const startPage = Math.max(1, currentPage - 2);
-      const endPage = Math.min(totalPages, currentPage + 2);
-      // 시작페이지가 1 보다 크면 첫 페이지와 ... 추가
-      if (startPage > 1) {
-        pages.push(1);
-        // [1]
-        if (startPage > 2) {
-          pages.push(`...`);
-          // [1, "..."]
-        }
-      }
-      // 중간 페이지를 추가
-      for (let i = startPage; i <= endPage; i++) {
-        pages.push(i);
-      }
-      // 끝 페이지가 마지막 보다 작으면 ... 과 페이지 추가
-      if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-          pages.push(`...`);
-        }
-        pages.push(totalPages);
-      }
-    }
-    return pages;
-  };
-
-  const pageNumbers = getPageNumbers();
-
-  // 페이지네이션이 무조건 나오는 것은 아니다.
-  if (totalPages <= 1) {
-    return <></>;
-  }
-
-  return (
-    <div>
-      {/* 페이지 정보 */}
-      <div>
-        총 {totalCount}개 중 {startItem} ~ {endItem} 개 표시
-      </div>
-      {/* 페이지 번호들 */}
-      <div>
-        <button onClick={() => handleChangePage(currentPage - 1)} disabled={currentPage === 1}>
-          이전
-        </button>
-        {/* 버튼들 출력 */}
-        {pageNumbers.map((item, index) => (
-          <React.Fragment key={index}>
-            {item === '...' ? (
-              <span>...</span>
-            ) : (
-              <button onClick={() => handleChangePage(item as number)}>{item}</button>
-            )}
-          </React.Fragment>
-        ))}
-        <button
-          onClick={() => handleChangePage(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          다음
-        </button>
-      </div>
-    </div>
-  );
-};
-
-export default Pagination;
-```
-
-### 2.4. /src/pages/TodosPage.tsx
+- /src/pages/TodosInfinitePage.tsx 생성
 
 ```tsx
 import { useEffect, useState } from 'react';
-import TodoList from '../components/todos/TodoList';
-import TodoWrite from '../components/todos/TodoWrite';
-import { TodoProvider, useTodos } from '../contexts/TodoContext';
-import type { Profile } from '../types/TodoTypes';
 import { useAuth } from '../contexts/AuthContext';
+import { InfiniteScrollProvider, useInfiniteScroll } from '../contexts/InfiniteScrollContext';
 import { getProfile } from '../lib/profile';
-import Pagination from '../components/Pagination';
+import type { Profile } from '../types/TodoTypes';
+// 입력창 컴포넌트
+const InfiniteTodoWrite = () => {
+  const { addTodo, loadingInitialTodos } = useInfiniteScroll();
+  const [title, setTitle] = useState('');
 
-// 컴포넌트
-interface TodosContentProps {
-  currentPage: number;
-  itemsPerPage: number;
-  handleChangePage: (page: number) => void;
-}
-const TodosContent = ({ currentPage, itemsPerPage, handleChangePage }: TodosContentProps) => {
-  const { totalCount, totalPages } = useTodos();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+  };
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === `Enter`) {
+      handleSave();
+    }
+  };
+  const handleSave = async (): Promise<void> => {
+    if (!title.trim()) {
+      alert('제목을 입력하세요');
+    }
+    try {
+      // 새 할일 추가
+      await addTodo(title);
+      // 다시 데이터를 로딩한다.
+      await loadingInitialTodos();
+      setTitle(``);
+    } catch (error) {
+      console.log(`등록에 오류가 발생 : ${error}`);
+      alert(`등록에 오류가 발생 : ${error}`);
+    }
+  };
+
   return (
     <div>
+      <h3>할일 작성</h3>
       <div>
-        {/* 새 글 등록시 1페이지로 이동후 목록 새로고침 */}
-        <TodoWrite handleChangePage={handleChangePage} />
-      </div>
-      <div>
-        <TodoList />
-      </div>
-      <div>
-        <Pagination
-          totalCount={totalCount}
-          totalPages={totalPages}
-          currentPage={currentPage}
-          itemsPerPage={itemsPerPage}
-          handleChangePage={handleChangePage}
+        <input
+          type="text"
+          value={title}
+          onChange={e => handleChange(e)}
+          onKeyDown={e => handleKeyDown(e)}
+          placeholder="할일을 입력하세요."
         />
+        <button onClick={handleSave}>등록</button>
       </div>
     </div>
   );
 };
 
-function TodosPage() {
+// 목록 컴포넌트
+const InfiniteTodoList = () => {
+  const { loading, todos, totalCount, editTodo, toggleTodo, deleteTodo, loadingInitialTodos } =
+    useInfiniteScroll();
   const { user } = useAuth();
-  // 페이지네이션 관련
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  // const itemsPerPage = 10;
-  // 페이지 변경 핸들러
-  const handleChangePage = (page: number) => {
-    setCurrentPage(page);
-  };
-
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  // 프로필 가져오기
-  const loadProfile = async () => {
-    try {
+  // 사용자 프로필 가져오기
+  useEffect(() => {
+    const loadProfile = async () => {
       if (user?.id) {
         const userProfile = await getProfile(user.id);
-        if (!userProfile) {
-          alert('탈퇴한 회원입니다. 관리자에게 요청하세요.');
-        }
         setProfile(userProfile);
       }
+    };
+    loadProfile();
+  }, [user?.id]);
+
+  // Intersection Observer 를 이용한 무한 스크롤
+
+  // 번호 계산 함수(최신글이 높은 번호가지도록)
+  const getGlobalIndex = (index: number) => {
+    // 무한스크롤시에 계산해서 번호 출력
+    const globalIndex = totalCount - index;
+    console.log(
+      `번호 계산 - index : ${index}, totalCount : ${totalCount}, globalIndex : ${globalIndex}`,
+    );
+    return globalIndex;
+  };
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return '날짜 없음';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // 수정상태 관리
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>('');
+  // 수정 시작
+  const handleEditStart = (todo: any) => {
+    setEditingId(todo.id);
+    setEditingTitle(todo.title);
+  };
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditingTitle('');
+  };
+  const handleEditSave = async (id: number) => {
+    if (!editingTitle?.trim()) {
+      alert('제목을 입력하세요.');
+      return;
+    }
+    try {
+      editTodo(id, editingTitle);
+      setEditingId(null);
+      setEditingTitle('');
     } catch (error) {
-      console.log('프로필 가져오기 Error : ', error);
+      console.log(error);
+      alert('수정에 실패했습니다.');
+    }
+  };
+  const handleToggle = async (id: number) => {
+    try {
+      // Context 의 state 를 업데이트
+      await toggleTodo(id);
+    } catch (error) {
+      console.log(`토글 실패 : `, error);
+      alert(`상태 변경에 실패하였습니다.`);
     }
   };
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  const handleDelete = async (id: number) => {
+    if (window.confirm(`정말 삭제하시겠습니까?`)) {
+      try {
+        // id 를 삭제
+        await deleteTodo(id);
+        // 삭제 이후에 번호를 갱신해서 정리해줌
+        await loadingInitialTodos();
+      } catch (error) {
+        console.log(`삭제에 실패하였습니다.`);
+        alert(`삭제에 실패하였습니다.`);
+      }
+    }
+  };
 
+  if (loading) {
+    return <div>데이터 로딩중 ...</div>;
+  }
   return (
     <div>
-      <h2>{profile?.nickname}할일</h2>
-      <TodoProvider currentPage={currentPage} limit={itemsPerPage}>
-        <TodosContent
-          handleChangePage={handleChangePage}
-          currentPage={currentPage}
-          itemsPerPage={itemsPerPage}
-        />
-      </TodoProvider>
+      <h3>TodoList(무한스크롤) {profile?.nickname && <span>{profile.nickname}님의 할일</span>}</h3>
+      {todos.length === 0 ? (
+        <p>등록된 할일이 없습니다.</p>
+      ) : (
+        <div>
+          <ul>
+            {todos.map((item, index) => (
+              <li key={item.id}>
+                {/* 번호표시 */}
+                {getGlobalIndex(index)}
+                {/* 체크박스 */}
+                <input
+                  type="checkbox"
+                  checked={item.completed}
+                  onChange={() => handleToggle(item.id)}
+                />
+                {/* 제목과 날짜출력 */}
+                <div>
+                  {editingId === item.id ? (
+                    <input
+                      type="text"
+                      value={editingTitle}
+                      onChange={e => setEditingTitle(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          handleEditSave(item.id);
+                        } else if (e.key === 'Escape') {
+                          handleEditCancel();
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span>{item.title}</span>
+                  )}
+                  <span>작성일 : {formatDate(item.created_at)}</span>
+                </div>
+                {/* 버튼들 */}
+                {editingId === item.id ? (
+                  <>
+                    <button onClick={() => handleEditSave(item.id)}>저장</button>
+                    <button onClick={() => handleEditCancel()}>취소</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => handleEditStart(item)}>수정</button>
+                    <button onClick={() => handleDelete(item.id)}>삭제</button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
+  );
+};
+
+function TodosInfinitePage() {
+  return (
+    <InfiniteScrollProvider itemsPerPage={5}>
+      <div>
+        <h2>무한 스크롤 Todo 목록</h2>
+        <div>
+          <InfiniteTodoWrite />
+        </div>
+        <div>
+          <InfiniteTodoList />
+        </div>
+      </div>
+    </InfiniteScrollProvider>
   );
 }
 
-export default TodosPage;
+export default TodosInfinitePage;
+```
+
+## 5. 무한 스크롤 구현
+
+- `Intersection Observer` 를 이용함.
+- `웹브라우저에 내장된 API` 중 하나.
+- 요소 즉, 대상이 되는 태그(element)가 뷰포트(화면에 보이는 영역) 또는 특정 스크롤 영역과 교차(intersect)하는지 감시하는 도구.
+  - intersect 는 DOM 요소가 화면에 보이거나, 사라지거나 등을 말함.
+- `스크롤 이벤트를 사용하지 않고도 자동으로 화면에 보이는 순간을 체크`할 수 있음.
+
+### 5.1. 기본 문법
+
+```js
+const observer = new IntersectionObserver((entries, observer) => {
+  // entries: 관찰 중인 모든 요소의 교차 상태 목록
+  // observer: 지금 만든 옵저버 자기 자신
+});
+
+// 특정 DOM 요소 관찰 시작
+observer.observe(domElement);
+
+// 관찰 해제
+observer.unobserve(domElement);
+
+// 모든 관찰 중지
+observer.disconnect();
+```
+
+### 5.2. 예제
+
+- `<div id="target"></div>`
+
+```js
+const target = document.getElementById('target');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      console.log('화면에 보임!', entry);
+    } else {
+      console.log('화면에서 나감!', entry);
+    }
+  });
+});
+
+observer.observe(target);
+```
+
+### 5.3. 옵션
+
+```js
+const options = {
+  root: null, // 관찰 기준 영역 (null이면 브라우저 뷰포트)
+  rootMargin: '0px', // root 바깥쪽 여백 (미리 감지하고 싶을 때 '200px' 같은 값)
+  threshold: 0.5, // 요소가 50% 보였을 때만 트리거
+};
+
+const observer = new IntersectionObserver(callback, options);
+```
+
+## 6. 라우터 추가
+
+- App.tsx
+
+```tsx
+import { Link, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import HomePage from './pages/HomePage';
+import SignUpPage from './pages/SignUpPage';
+import SignInPage from './pages/SignInPage';
+import TodosPage from './pages/TodosPage';
+import Protected from './components/Protected';
+import ProfilePage from './pages/ProfilePage';
+import AuthCallback from './pages/AuthCallback';
+import AdminPage from './pages/AdminPage';
+import TodosInfinitePage from './pages/TodosInfinitePage';
+
+const TopBar = () => {
+  const { signOut, user } = useAuth();
+  // 관리자인 경우 메뉴 추가로 출력하기
+  // isAdmin 에는 true/fasle
+  const isAdmin = user?.email === 'dev.seastj@gmail.com';
+
+  return (
+    <nav style={{ display: 'flex', gap: 20, justifyContent: 'flex-end', padding: 40 }}>
+      <Link to="/">홈</Link>
+      {user && <Link to="/todos">할일</Link>}
+      {user && <Link to="/todos-infinite">무한스크롤 할일</Link>}
+      {!user && <Link to="/signup">회원가입</Link>}
+      {!user && <Link to="/signin">로그인</Link>}
+      {user && <Link to="/profile">프로필</Link>}
+      {user && <button onClick={signOut}>로그아웃</button>}
+
+      {isAdmin && <Link to="/admin">관리자</Link>}
+    </nav>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <div>
+        <h1>Todo Service</h1>
+        <Router>
+          <TopBar />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/signin" element={<SignInPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/todos"
+              element={
+                <Protected>
+                  <TodosPage />
+                </Protected>
+              }
+            />
+            <Route
+              path="/todos-infinite"
+              element={
+                <Protected>
+                  <TodosInfinitePage />
+                </Protected>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <Protected>
+                  <ProfilePage />
+                </Protected>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <Protected>
+                  <AdminPage />
+                </Protected>
+              }
+            />
+          </Routes>
+        </Router>
+      </div>
+    </AuthProvider>
+  );
+}
+
+export default App;
 ```
