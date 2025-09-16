@@ -46,7 +46,7 @@ function reducer(
   switch (action.type) {
     case TodoActionType.ADD: {
       const { todo } = action.payload;
-      return { ...state, todos: [todo, ...state.todos] };
+      return { ...state, todos: [todo, ...state.todos], totalCount: state.totalCount + 1 };
     }
 
     case TodoActionType.TOGGLE: {
@@ -59,7 +59,7 @@ function reducer(
     case TodoActionType.DELETE: {
       const { id } = action.payload;
       const arr = state.todos.filter(item => item.id !== id);
-      return { ...state, todos: arr };
+      return { ...state, todos: arr, totalCount: Math.max(0, state.totalCount - 1) };
     }
     case TodoActionType.EDIT: {
       const { id, title } = action.payload;
