@@ -109,7 +109,7 @@ function App() {
               }
             />
             <Route
-              path="/todos/detail:id"
+              path="/todos/detail/:id"
               element={
                 <Protected>
                   <TodoDetailPage />
