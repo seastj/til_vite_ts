@@ -26,14 +26,13 @@
 
 ```tsx
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Pagination from '../components/Pagination';
-import TodoList from '../components/todos/TodoList';
 import TodoWriteBox from '../components/todos/TodoWriteBox';
 import { useAuth } from '../contexts/AuthContext';
 import { TodoProvider, useTodos } from '../contexts/TodoContext';
 import { getProfile } from '../lib/profile';
 import type { Profile, Todo } from '../types/TodoTypes';
-import { Link } from 'react-router-dom';
 // 컴포넌트 추후 추출
 interface TodoItemProps {
   todo: Todo;
@@ -76,6 +75,8 @@ const TodoItemBox = ({ todo, index }: TodoItemProps) => {
     </li>
   );
 };
+
+// 컴포넌트 추후 추출
 const TodoListBox = () => {
   const { user } = useAuth();
   // 전체 할 일 목록 가져오기
@@ -84,7 +85,7 @@ const TodoListBox = () => {
   return (
     <ul className="todo-list">
       {todos.map((item, index) => (
-        <TodoItemBox key={index} todo={item} index={index} />
+        <TodoItemBox key={item.id} todo={item} index={index} />
       ))}
     </ul>
   );
@@ -110,7 +111,7 @@ const TodosContent = ({
         <TodoWriteBox profile={profile} />
       </div>
       <div>
-        <TodoList />
+        <TodoListBox />
       </div>
       <div>
         <Pagination
@@ -952,7 +953,7 @@ function App() {
               }
             />
             <Route
-              path="/todos/detail:id"
+              path="/todos/detail/:id"
               element={
                 <Protected>
                   <TodoDetailPage />
