@@ -71,7 +71,7 @@ const RichTextEditor = ({
       const tempImage: TempImageFile = {
         file: file,
         tempUrl: tempUrl,
-        id: 'tempId',
+        id: tempId,
       };
 
       // 생성된 정보를 보관한다.
@@ -144,7 +144,7 @@ const RichTextEditor = ({
     const usedTempUrls = new Set<string>();
     // 내용에서 blob 으로 된 글자를 찾아줄 것이다.
     // 글자들을 비교할때 정규표현식(Regular Expression)을 사용함.
-    const tempUrlRegex = /blob:[^""\s]+/g;
+    const tempUrlRegex = /blob:[^"'\s]+/g;
     // 실제로 비교를 실행
     const matchs = valueRef.current.match(tempUrlRegex);
     if (matchs) {
