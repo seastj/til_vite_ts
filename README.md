@@ -112,7 +112,7 @@ const RichTextEditor = ({
       const tempImage: TempImageFile = {
         file: file,
         tempUrl: tempUrl,
-        id: '?',
+        id: 'tempId',
       };
 
       // 생성된 정보를 보관한다.
@@ -310,7 +310,7 @@ export default RichTextEditor;
 - /src/pages/TodoWritePage.tsx
 
 ```tsx
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import type { Profile, TodoInsert } from '../types/TodoTypes';
 import { getProfile } from '../lib/profile';
@@ -347,10 +347,10 @@ function TodoWritePage() {
       if (window.confirm(`작성 중인 내용이 있습니다. 정말 취소하시겠습니까?`)) {
         // 목록으로
         navigate('/todos');
-      } else {
-        // 목록으로
-        navigate('/todos');
       }
+    } else {
+      // 목록으로
+      navigate('/todos');
     }
   };
 
@@ -382,8 +382,42 @@ function TodoWritePage() {
             // 파일명을 생성한다.
             const timestamp = Date.now() + i; // 각 이미지 마다 다른 시간글자
             // todo-images 저장소 폴더명생성 / 파일명 생성
-            const fileName = `${user!.id}_${timestamp}_${imageFile.name}`;
-            const filePath = `${user?.id}/${fileName}`;
+
+            // 한글 파일명 또는 특수기호 처리
+            const goodFileName = (filename: string) => {
+              const lastDotIndex = filename.lastIndexOf('.');
+              const name = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+              const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
+
+              // 안전한 파일명 생성
+              let safeName = name
+                // 1단계: 공백을 언더스코어로 변환
+                .replace(/\s+/g, '_')
+                // 2단계: 한글, 특수기호, 이모지 등을 언더스코어로 변환
+                .replace(/[^\w\-_.]/g, '_')
+                // 3단계: 연속된 언더스코어를 하나로 통합
+                .replace(/_+/g, '_')
+                // 4단계: 앞뒤 언더스코어 제거
+                .replace(/^_|_$/g, '')
+                // 5단계: 파일명이 비어있거나 너무 짧으면 기본값 사용
+                .replace(/^$/, 'image');
+
+              // 파일명이 너무 길면 자르기 (확장자 제외 50자 제한)
+              if (safeName.length > 50) {
+                safeName = safeName.substring(0, 50);
+              }
+
+              // 확장자도 안전하게 처리
+              const safeExtension = extension
+                .replace(/[^\w.]/g, '') // 영문, 숫자, 점만 허용
+                .toLowerCase(); // 소문자로 통일
+
+              return safeName + safeExtension;
+            };
+
+            const safeFileName = goodFileName(imageFile.name);
+            const fileName = `${user!.id}_${timestamp}_${safeFileName}`;
+            const filePath = `${user!.id}/${fileName}`;
             // supabase 에 실제 업로드
             // 폴더가 있으면 재활용, 없으면 자동 생성
             const { error } = await supabase.storage
@@ -456,13 +490,13 @@ function TodoWritePage() {
         <div className="form-group">
           <label className="form-label">상세 내용</label>
           {/* <textarea
-            className="form-input"
-            value={content}
-            onChange={e => handleContentChange(e)}
-            placeholder="상세 내용을 입력해주세요(선택사항)"
-            rows={6}
-            disabled={saving}
-          /> */}
+              className="form-input"
+              value={content}
+              onChange={e => handleContentChange(e)}
+              placeholder="상세 내용을 입력해주세요(선택사항)"
+              rows={6}
+              disabled={saving}
+            /> */}
           <RichTextEditor
             value={content}
             onChange={handleContentChange}
