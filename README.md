@@ -744,7 +744,7 @@ export default TodoEditPage;
 
 - todoService.ts 에서 `updateTodo` 기능 업데이트
 
-```tsx
+```ts
 // Todo 수정
 // 로그인을 하고 나면 실제로 user_id 가 이미 파악이 됨
 // TodoUpdate 에서 user_id : 값 을 생략하는 타입을 생성
