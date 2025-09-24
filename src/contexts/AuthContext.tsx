@@ -31,10 +31,16 @@ type AuthContextType = {
   checkEmailExists: (email: string) => Promise<{ exists: boolean; error?: string }>;
   // 닉네임 중복 확인 함수
   checkNicknameExists: (nickname: string) => Promise<{ exists: boolean; error?: string }>;
+
   // 카카오 로그인 함수
   signInWithKakao: () => Promise<{ error?: string }>;
-  //카카오 계정 연동 해제
+  // 구글 로그인 함수
+  signInWithGoogle: () => Promise<{ error?: string }>;
+
+  // 카카오 계정 연동 해제
   unlinkKakaoAccount: () => Promise<{ error?: string; success?: boolean; message?: string }>;
+  // 구글 계정 연동 해제
+  unlinkGoogleAccount: () => Promise<{ error?: string; success?: boolean; message?: string }>;
 
   // 회원 로그아웃
   signOut: () => Promise<void>;
@@ -169,6 +175,22 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     return {};
   };
 
+  // 구글 로그인 함수
+  const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    // 오류발생시 체크 해보자
+    if (error) {
+      return { error: error.message };
+    }
+    console.log('구글 로그인 성공 : ', data);
+    return {};
+  };
+
   // 카카오 계정 연동 해제 함수
   const unlinkKakaoAccount: AuthContextType['unlinkKakaoAccount'] = async () => {
     try {
@@ -178,7 +200,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       }
       // supabase 에서 카카오 계정 연동 해제
       // 사용자의 카카오 identity 찾기
-      const kakaoIdentity = user.identities?.find(item => item.provider === `카카오`);
+      const kakaoIdentity = user.identities?.find(item => item.provider === `kakao`);
       if (!kakaoIdentity) {
         return { error: '카카오 계정 연동 정보를 찾을 수 없습니다.' };
       }
@@ -199,6 +221,36 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   };
 
+  // 구글 계정 연동 해제 함수
+  const unlinkGoogleAccount: AuthContextType['unlinkGoogleAccount'] = async () => {
+    try {
+      // 구글 로그인 사용자인지 확인
+      if (user?.app_metadata.provider !== 'google') {
+        return { error: '구글 로그인 사용자가 아닙니다.' };
+      }
+      // supabase 에서 구글 계정 연동 해제
+      // 사용자의 구글 identity 찾기
+      const googleIdentity = user.identities?.find(item => item.provider === `google`);
+      if (!googleIdentity) {
+        return { error: '구글 계정 연동 정보를 찾을 수 없습니다.' };
+      }
+      // 사용자의 구글 identity 찾기 성공
+      const { error } = await supabase.auth.unlinkIdentity(googleIdentity);
+      if (error) {
+        console.log(`구글 계정 연동 해제 실패 : ${error.message}`);
+        return { error: `구글 계정 연동 해제에 실패하였습니다.` };
+      }
+      // 계정 해제에 성공했다면
+      return {
+        success: true,
+        message: '구글 계정 연동 해제에 성공했습니다.',
+      };
+    } catch (err) {
+      console.log(`구글 계정 연동 해제 오류 : ${err}`);
+      return { error: '구글 계정 연동 해제 중 오류가 발생했습니다.' };
+    }
+  };
+
   // 회원 로그아웃
   const signOut: AuthContextType['signOut'] = async () => {
     await supabase.auth.signOut();
@@ -208,6 +260,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     try {
       // 회원 탈퇴기능 (카카오 회원탈퇴 기능도 추가)
       const isKakaoUser = user?.app_metadata.provider === `kakao`;
+      const isGoogleUser = user?.app_metadata.provider === `google`;
 
       // 기존에 사용한 데이터들을 먼저 정리한다.
       const { error: profileError } = await supabase.from('profiles').delete().eq('id', user?.id);
@@ -221,7 +274,11 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       // 등록할 삭제 데이터
       const deleteInfo: DeleteRequestInsert = {
         user_id: user?.id,
-        reason: isKakaoUser ? `카카오 회원 탈퇴 요청` : '사용자 요청',
+        reason: isKakaoUser
+          ? `카카오 회원 탈퇴 요청`
+          : isGoogleUser
+            ? `구글 회원 탈퇴 요청`
+            : '사용자 요청',
         status: 'pending',
         user_email: user?.email as string,
       };
@@ -243,7 +300,9 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
         success: true,
         message: isKakaoUser
           ? `카카오 계정 연동이 해제되었습니다. 계정 삭제 요청이 완료되었습니다.`
-          : '계정 삭제 요청이 완료되었습니다. 관리자 승인 후 완전히 삭제됩니다.',
+          : isGoogleUser
+            ? `구글 계정 연동이 해제되었습니다. 계정 삭제 요청이 완료되었습니다.`
+            : '계정 삭제 요청이 완료되었습니다. 관리자 승인 후 완전히 삭제됩니다.',
       };
     } catch (err) {
       console.log('탈퇴 요청 기능 오류 : ', err);
@@ -257,7 +316,9 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     checkEmailExists,
     checkNicknameExists,
     signInWithKakao,
+    signInWithGoogle,
     unlinkKakaoAccount,
+    unlinkGoogleAccount,
     signOut,
     user,
     session,

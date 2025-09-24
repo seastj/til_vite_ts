@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import KakaoLoginButton from '../components/KakaoLoginButton';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 function SignInPage() {
   const navigate = useNavigate();
@@ -66,8 +67,12 @@ function SignInPage() {
           <div></div>
         </div>
 
-        {/* 카카오 로그인 버튼 */}
+        {/* 카카오 로그인 버튼 : 오류 메시지는 사용자도 볼 수 있어야 함. */}
         <KakaoLoginButton onError={error => setMsg(`카카오 로그인 오류 : ${error}`)} />
+        {/* 구글 로그인 버튼 : 오류 메시지는 사용자도 볼 수 있어야 함. */}
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <GoogleLoginButton onError={error => setMsg(`구글 로그인 오류 : ${error}`)} />
+        </div>
 
         {/* 메세지 출력 */}
         {msg && (
