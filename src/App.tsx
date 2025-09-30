@@ -16,6 +16,7 @@ import TodoDetailPage from './pages/TodoDetailPage';
 import DirectChatPage from './pages/chat/DirectChatPage';
 // 1:1 채팅 관련 css
 import './components/chat/chat.css';
+import { DirectChatProvider } from './contexts/DirectChatContext';
 
 const TopBar = () => {
   const { signOut, user } = useAuth();
@@ -75,92 +76,94 @@ const TopBar = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <div className="container">
-        <div className="page-header">
-          <h1 className="page-title">🥚Todo Service</h1>
+    <DirectChatProvider>
+      <AuthProvider>
+        <div className="container">
+          <div className="page-header">
+            <h1 className="page-title">🥚Todo Service</h1>
+          </div>
+          <Router
+            future={{
+              v7_relativeSplatPath: true,
+              v7_startTransition: true,
+            }}
+          >
+            <TopBar />
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/signin" element={<SignInPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route
+                path="/todos"
+                element={
+                  <Protected>
+                    <TodoListPage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/todos/write"
+                element={
+                  <Protected>
+                    <TodoWritePage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/todos/edit/:id"
+                element={
+                  <Protected>
+                    <TodoEditPage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/todos/detail/:id"
+                element={
+                  <Protected>
+                    <TodoDetailPage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/todos-infinite"
+                element={
+                  <Protected>
+                    <TodosInfinitePage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <Protected>
+                    <ProfilePage />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <Protected>
+                    <AdminPage />
+                  </Protected>
+                }
+              />
+              {/* 1:1 채팅 페이지 */}
+              <Route
+                path="/chat"
+                element={
+                  <Protected>
+                    <DirectChatPage />
+                  </Protected>
+                }
+              />
+            </Routes>
+          </Router>
         </div>
-        <Router
-          future={{
-            v7_relativeSplatPath: true,
-            v7_startTransition: true,
-          }}
-        >
-          <TopBar />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/signup" element={<SignUpPage />} />
-            <Route path="/signin" element={<SignInPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route
-              path="/todos"
-              element={
-                <Protected>
-                  <TodoListPage />
-                </Protected>
-              }
-            />
-            <Route
-              path="/todos/write"
-              element={
-                <Protected>
-                  <TodoWritePage />
-                </Protected>
-              }
-            />
-            <Route
-              path="/todos/edit/:id"
-              element={
-                <Protected>
-                  <TodoEditPage />
-                </Protected>
-              }
-            />
-            <Route
-              path="/todos/detail/:id"
-              element={
-                <Protected>
-                  <TodoDetailPage />
-                </Protected>
-              }
-            />
-            <Route
-              path="/todos-infinite"
-              element={
-                <Protected>
-                  <TodosInfinitePage />
-                </Protected>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <Protected>
-                  <ProfilePage />
-                </Protected>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <Protected>
-                  <AdminPage />
-                </Protected>
-              }
-            />
-            {/* 1:1 채팅 페이지 */}
-            <Route
-              path="/chat"
-              element={
-                <Protected>
-                  <DirectChatPage />
-                </Protected>
-              }
-            />
-          </Routes>
-        </Router>
-      </div>
-    </AuthProvider>
+      </AuthProvider>
+    </DirectChatProvider>
   );
 }
 
