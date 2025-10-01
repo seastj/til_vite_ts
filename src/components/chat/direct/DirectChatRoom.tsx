@@ -1,6 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import MessageInput from '../common/MessageInput';
 import { useDirectChat } from '../../../contexts/DirectChatContext';
+import type { MessageDetail } from '../../../types/ChatType';
+
+// 날짜별 메시지 그룹 타입 정의 - 같은 날짜의 메시지들을 그룹핑
+// 원본 데이터를 가공하고 마무리 별도의 파일에 type 으로 정의안함.
+interface MessageGroup {
+  [date: string]: MessageDetail[]; // 날짜 문자열을 키로 하고 해당 날짜의 메시지 배열을 값으로 담음.
+}
 
 // DirectChatRoom 컴포넌트의 Props 타입 정의
 interface DirectChatRoom {
@@ -14,9 +21,33 @@ const DirectChatRoom = ({ chatId }: DirectChatRoom) => {
   // 메시지의 개수가 많으면 하단으로 스크롤을 해야 함.
   // 새메시지가 추가될 때 마다 최신 메시지를 볼 수 있도록 해야 함.
   const messageEndRef = useRef<HTMLDivElement>(null);
+
+  // DOM 업데이트 후 실행되도록
   const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // DOM 완료 후 실행되도록
+    setTimeout(() => {
+      messageEndRef.current?.scrollIntoView({
+        behavior: 'smooth', // 부드러운 스크롤 애니메이션
+        block: 'end', // 수직 스크롤 요소의 하단에 맞춤
+        inline: 'nearest', // 수평 스크롤을 가장 가까운 위치에 맞춤
+      });
+    }, 100);
   };
+
+  // 새로운 메시지가 추가되거나 메시지 목록이 변경이 되면 하단으로 스크롤
+  useEffect(() => {
+    // 메시지가 왔을때만 스크롤 실행
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
+
+  // 초기 로딩 완료 후 스크롤
+  useEffect(() => {
+    if (!loading && messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [loading, messages]);
 
   // 채팅방 ID 가 변경이 되면 메시지를 다시 로드
   useEffect(() => {
@@ -51,15 +82,19 @@ const DirectChatRoom = ({ chatId }: DirectChatRoom) => {
   };
   // 메시지를 날짜별로 그룹화하는 함수 - 같은 날짜의 메시지들을 하나의 그룹으로
   // 날짜 구분선도 표시
-  const groupMessagesByDate = (messages: any[]) => {
-    const groups: { [key: string]: any[] } = {};
+  // 사용자가 만약 채팅방을 한개 선택하면 각 채팅방의 메시지 내용이 들어옴
+  const groupMessagesByDate = (messages: MessageDetail[]): MessageGroup => {
+    const groups: MessageGroup = {}; // 날짜별로 그룹화된 메시지를 저장할 객체
 
-    messages.forEach(message => {
+    messages.forEach((message: MessageDetail) => {
+      // 메시지 생성일의 속성을 문자열로 만듦
       const date = new Date(message.created_at).toLocaleDateString();
+      // 만약 키명으로 새로운 날짜글자가 들어오면 키명을 새로 만든다.
       if (!groups[date]) {
         groups[date] = [];
       }
 
+      // 해당 날짜의 그룹에 메시지 추가
       groups[date].push(message);
     });
     return groups;
@@ -127,7 +162,7 @@ const DirectChatRoom = ({ chatId }: DirectChatRoom) => {
           </div>
         ) : (
           // 날짜 별로 그룹화된 메시지 목록 렌더링
-          Object.entries(messageGroups).map(([date, dateMessages]) => (
+          Object.entries(messageGroups).map(([date, dateMessages]: [string, MessageDetail[]]) => (
             <div key={date} className="message-group">
               {/* 날짜 구분선 */}
               <div className="date-divider">
@@ -137,7 +172,7 @@ const DirectChatRoom = ({ chatId }: DirectChatRoom) => {
 
               {/* 메시지들 묶음 컨테이너  */}
               <div className="message-group-container">
-                {dateMessages.map(message => {
+                {dateMessages.map((message: MessageDetail) => {
                   const isMyMessage = message.sender.id === currentUserId;
 
                   return (

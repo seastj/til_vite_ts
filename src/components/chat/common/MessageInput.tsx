@@ -63,10 +63,9 @@ const MessageInput = ({ chatId }: MessageInputProps) => {
     // Enter 키가 눌렸고, Shift 키가 함께 눌리지 않은 경우
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // 기본 줄 바꿈 동작 방지
-      handleKeyPress(e); // 메시지 전송 실행
+      handleSubmit(e); // 메시지 전송 실행
     }
     // Shift + Enter 의 경우 기본 동작(줄바꿈) 을 유지
-    
   };
 
   // 텍스트 영역 변경 처리 함수
