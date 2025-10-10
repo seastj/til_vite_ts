@@ -1118,7 +1118,7 @@ useEffect(() => {
 }, [loadChats]);
 ```
 
-## 5. DirectChatRoom.tsx 업데이트
+## 5. DirectChatRoom.tsx 업데이트.
 
 - /src/components/chat/direct/DirectChatRoom.tsx
 
