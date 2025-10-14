@@ -5,39 +5,30 @@ interface GoogleLoginButtonProps {
   onError?: (error: string) => void;
   onSuccess?: (message: string) => void;
 }
-
 const GoogleLoginButton = ({ onError, onSuccess }: GoogleLoginButtonProps) => {
   // 구글 로그인 사용
   const { signInWithGoogle } = useAuth();
-
   // 구글 로그인 실행
   const handleGoogleLogin = async () => {
     try {
       const { error } = await signInWithGoogle();
       if (error) {
-        console.log(`구글 로그인 에러 메시지 : ${error}`);
+        console.log('구글 로그인 에러 메시지 : ', error);
         if (onError) {
           onError(error);
         }
       } else {
-        console.log(`구글 로그인 성공`);
+        console.log('구글 로그인 성공');
         if (onSuccess) {
-          onSuccess(`구글 로그인이 성공하였습니다.`);
+          onSuccess('구글 로그인이 성공했습니다.');
         }
       }
     } catch (err) {
-      console.log(`구글 로그인 오류 : ${err}`);
+      console.log('구글 로그인 오류 : ', err);
     }
   };
   return (
     <button
-      onClick={handleGoogleLogin}
-      onMouseEnter={e => {
-        e.currentTarget.style.backgroundColor = '#f8f9fa';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.backgroundColor = '#fff';
-      }}
       type="button"
       style={{
         display: 'flex',
@@ -55,6 +46,13 @@ const GoogleLoginButton = ({ onError, onSuccess }: GoogleLoginButtonProps) => {
         cursor: 'pointer',
         transition: 'background-color 0.2s ease',
       }}
+      onMouseEnter={e => {
+        e.currentTarget.style.backgroundColor = '#f8f9fa';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.backgroundColor = '#fff';
+      }}
+      onClick={handleGoogleLogin}
     >
       {/* 구글 아이콘 SVG */}
       <svg

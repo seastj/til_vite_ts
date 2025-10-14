@@ -1,13 +1,13 @@
 /**
  * 1:1 채팅에서 메시지를 입력하고 전송하는 컴포넌트
  * - 자동 높이 조절되는 텍스트 영역
- * - Enter 키로 메시지 전송, Shift+Enter 로 줄바꿈
+ * - Enter 키로 메시지 전송, Shift + Enter 로 줄바꿈
  * - 전송 중 로딩 상태 표시
  * - 빈 메시지 전송 방지
  * - 전송 후 입력 필드 자동 초기화
  */
 
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useDirectChat } from '../../../contexts/DirectChatContext';
 
 interface MessageInputProps {
@@ -29,14 +29,14 @@ const MessageInput = ({ chatId }: MessageInputProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     // 웹브라우저 새로고침 방지
     e.preventDefault();
-    // 메시지가 없거나 전송중인 상태
+    // 메시자가 없거나 전송중인 상태라면...
     if (!message.trim() || sending) {
       return;
     }
-    // 전송중인 상태로 중복 전송 방지
+    // 전송 중인 상태로 중복 전송 방지
     setSending(true);
     try {
-      // DirectChatContext의 sendMessage
+      //  DirectChatContext의 sendMessage
       const success = await sendMessage({
         chat_id: chatId, // 현재 채팅방 ID
         content: message.trim(), // 공백이 제거된 메시지 내용
@@ -55,23 +55,27 @@ const MessageInput = ({ chatId }: MessageInputProps) => {
       console.log('메시지 전송 오류 : ', error);
     } finally {
       setSending(false);
+      // 메시지 전송 후 포커스를 다시 주기 (DOM 업데이트 후)
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     }
   };
 
   // 키보드 이벤트 처리
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    // Enter 키가 눌렸고, Shift 키가 함께 눌리지 않은 경우
+    // Enter 키가 눌렸고, Shift 키가 함께 줄리지 않은 경우
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // 기본 줄 바꿈 동작 방지
       handleSubmit(e); // 메시지 전송 실행
     }
-    // Shift + Enter 의 경우 기본 동작(줄바꿈) 을 유지
+    // Shfit + Enter 의 경우 기본 동작(줄바꿈)을 유지
   };
 
   // 텍스트 영역 변경 처리 함수
   // 최대 높이(120px)
   // 텍스트 영역의 높이를 내용에 맞게 자동 조절
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleTextareaChage = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // 입력된 텍스트를 상태에 저장
     setMessage(e.target.value);
     // 자동 높이 조절
@@ -90,22 +94,22 @@ const MessageInput = ({ chatId }: MessageInputProps) => {
           <textarea
             ref={textareaRef} // DOM 참조를 위한 ref
             value={message} // 현재 입력된 메시지
-            onChange={handleTextareaChange} // 텍스트 변경시 높이 조절 및 메시지 보관
+            onChange={handleTextareaChage} // 텍스트 변경시 높이 조절 및 메시지 보관
             onKeyDown={handleKeyPress} // Enter 처리 (Shift + Enter 예외처리)
             className="message-textarea"
             rows={1}
-            placeholder="메시지를 입력하세요... (Enter로 전송, Shift+Enter로 줄바꿈"
+            placeholder="메시지를 입력하세요... (Enter로 전송, Shift+Enter로 줄바꿈)"
             disabled={sending} // 전송 중일때 비활성
           />
           {/* 메시지 전송 버튼 */}
           <button
             type="submit"
             className="send-button"
-            disabled={!message.trim() || sending} // 빈 메시지 거나 전송 중 일때 비활성
+            disabled={!message.trim() || sending} // 빈 메시지거나 전송 중일때 비활성
           >
             {sending ? (
               <>
-                {/* 전송 중 일때 로딩 스피너 표시 */}
+                {/* 전송 중일 때 로딩 스피너 표시 */}
                 <div className="loading-spinner"></div>
               </>
             ) : (

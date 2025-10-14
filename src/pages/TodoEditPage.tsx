@@ -1,7 +1,7 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useCallback, useEffect, useState } from 'react';
-import type { Profile, Todo } from '../types/TodoTypes';
+import { useNavigate, useParams } from 'react-router-dom';
+import type { Profile, Todo } from '../types/TodoType';
 import { getProfile } from '../lib/profile';
 import { getTodoById, toggleTodo, updateTodo } from '../services/todoService';
 import Loading from '../components/Loading';
@@ -9,8 +9,8 @@ import RichTextEditor from '../components/RichTextEditor';
 import { supabase } from '../lib/supabase';
 
 function TodoEditPage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [todo, setTodo] = useState<Todo | null>(null);
@@ -80,10 +80,28 @@ function TodoEditPage() {
     loadTodo();
   }, [id, user?.id, navigate]);
 
+  const handleToggle = async () => {
+    if (!todo) return;
+    try {
+      setToggleLoading(true);
+      const result = await toggleTodo(todo.id, !todo.completed);
+      if (result) {
+        setTodo(result);
+        alert(`할 일이 ${result.completed ? '완료' : '진행 중'}으로 변경되었습니다.`);
+      } else {
+        alert('오류가 발생하였습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    } catch (error) {
+      console.log('상태 변경 실패: ', error);
+      alert('에러가 발생하였습니다');
+    } finally {
+      setToggleLoading(false);
+    }
+  };
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
   };
-
   // const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
   //   setContent(e.target.value);
   // };
@@ -94,17 +112,19 @@ function TodoEditPage() {
   // 아래는 파일도 저장하도록 업데이트
   const handleSave = async () => {
     if (!todo) return;
+
     if (!title.trim()) {
       alert('제목을 입력하세요.');
       return;
     }
+
     try {
       setSaving(true);
 
       // 파일 업데이트 처리
       // 1. 기존의 content 내용을 보관
-      // <img src="blob:~~" /> 새로이 업로드 한 이미지인 경우
-      // <img src="http://~" /> 기존의 storage 에 있는 경우
+      // <img src="blob:~~`/>  새로이 업로드 한 이미지인 경우
+      // <img src="http://~"   기존의 storage 에 있는 경우
       let finalContent = content;
 
       // 2. blob 파일이 존재한다면
@@ -180,7 +200,7 @@ function TodoEditPage() {
         }
       }
 
-      // 현재 finalContent 는 많은 내용이 변경되었음. (기존 파일 삭제 또는 신규 파일 추가)
+      // 현재 finalContent 는 많은 내용이 변경되었음. (기존파일 삭제 또는 신규 파일 추가)
       const result = await updateTodo(todo.id, { title, content: finalContent });
       if (result) {
         alert('할 일이 성공적으로 수정되었습니다.');
@@ -189,40 +209,21 @@ function TodoEditPage() {
         alert('수정 중 오류가 발생하였습니다. 잠시 후 다시 시도해주세요.');
       }
     } catch (error) {
-      console.log(`수정 실패 : ${error}`);
-      alert('수정에 실패하였습니다.');
+      console.log('수정 실패 : ', error);
+      alert('수정에 실패하였습니다');
     } finally {
-      setSaving(true);
+      setSaving(false);
     }
   };
 
-  const hanldleCancel = () => {
-    // 바로 취소하지 않음
-    if (title !== todo?.title || content !== todo?.content) {
+  const handleCancel = () => {
+    // 바로 취소하지 않음.
+    if (title !== todo?.title || content !== (todo?.content || '')) {
       if (window.confirm('수정 중인 내용이 있습니다. 정말 취소하시겠습니까?')) {
         navigate('/todos');
-      } else {
-        navigate('/todos');
       }
-    }
-  };
-
-  const handleToggle = async () => {
-    if (!todo) return;
-    try {
-      setToggleLoading(true);
-      const result = await toggleTodo(todo.id, !todo.completed);
-      if (result) {
-        setTodo(result);
-        alert(`할 일이 ${result.completed ? '완료' : '진행중'} 으로 변경되었습니다.`);
-      } else {
-        alert('오류가 발생하였습니다. 잠시 후 다시 시도해 주세요.');
-      }
-    } catch (error) {
-      console.log('상태 변경 실패 : ', error);
-      alert('에러가 발생하였습니다.');
-    } finally {
-      setToggleLoading(false);
+    } else {
+      navigate('/todos');
     }
   };
 
@@ -244,9 +245,10 @@ function TodoEditPage() {
   return (
     <div>
       <div className="page-header">
-        <h2 className="page-title"> 할 일 상세보기</h2>
+        <h2 className="page-title"> 할 일 수정</h2>
         {profile?.nickname && <p className="page-subtitle">{profile.nickname}님의 할 일</p>}
       </div>
+      {/* 상세 내용 */}
       <div className="card">
         <div className="form-group">
           <label className="form-label">완료 상태</label>
@@ -262,9 +264,9 @@ function TodoEditPage() {
                 opacity: toggleLoading || saving ? 0.6 : 1,
               }}
             />
-            <span>{todo.completed ? `완료됨` : `진행중`}</span>
+            <span> {todo.completed ? '✅ 완료됨' : '⏳ 진행 중'}</span>
             {toggleLoading && (
-              <span style={{ color: 'var(--gray-500)', fontSize: '14px' }}>처리 중 ...</span>
+              <span style={{ color: 'var(--gray-500)', fontSize: '14px' }}>처리 중...</span>
             )}
           </div>
         </div>
@@ -275,8 +277,8 @@ function TodoEditPage() {
             className="form-input"
             onChange={handleTitleChange}
             value={title}
-            placeholder="할 일을 입력하세요."
             disabled={saving}
+            placeholder="할 일을 입력하세요."
           />
         </div>
         <div className="form-group">
@@ -337,16 +339,16 @@ function TodoEditPage() {
         {/* 버튼들 */}
         <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
           <button
-            onClick={hanldleCancel}
             className="btn btn-secondary"
             disabled={saving || toggleLoading}
+            onClick={handleCancel}
           >
             취소
           </button>
           <button
-            onClick={handleSave}
             className="btn btn-primary"
             disabled={saving || toggleLoading}
+            onClick={handleSave}
           >
             {saving ? '⏳ 수정 중...' : '수정'}
           </button>

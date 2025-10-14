@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { ProfileInsert } from '../types/TodoTypes';
+import type { ProfileInsert } from '../types/TodoType';
 import { createProfile } from '../lib/profile';
 import { useNavigate } from 'react-router-dom';
 
 /**
- *  - 인증 콜백 URL 처리
- *  - 사용자에게 인증 진행 상태 안내
- *  - 자동 인증 처리 완료 안내
+ * - 인증 콜백 URL 처리
+ * - 사용자에게 인증 진행 상태 안내
+ * - 자동 인증 처리 완료 안내
  */
 function AuthCallback() {
   const [msg, setMsg] = useState<string>('인증 처리 중 ...');
@@ -82,16 +82,6 @@ function AuthCallback() {
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
 
-      // console.log('OAuth 파라미터:', {
-      //   code: !!code,
-      //   error,
-      //   accessToken: !!accessToken,
-      //   refreshToken: !!refreshToken,
-      //   fullUrl: window.location.href,
-      //   search: window.location.search,
-      //   hash: window.location.hash,
-      // });
-
       if (error) {
         setMsg(`OAuth 오류: ${error}`);
         return;
@@ -163,14 +153,12 @@ function AuthCallback() {
       const isGoogleLogin = user.app_metadata.provider === 'google';
       const isOAuthLogin = isKakaoLogin || isGoogleLogin;
 
-      let loginType = `이메일 인증`;
+      let loginType = '이메일 인증';
       if (isKakaoLogin) {
-        loginType = `카카오 로그인`;
+        loginType = '카카오 로그인';
       } else if (isGoogleLogin) {
-        loginType = `구글 로그인`;
+        loginType = '구글 로그인';
       }
-
-      // OAuth 로그인 이메일
 
       // OAuth 로그인 이메일 중복 확인 (임시 비활성화)
       if (isOAuthLogin && user.email) {
@@ -180,9 +168,11 @@ function AuthCallback() {
 
       // 닉네임 추출
       const nickname = extractNickname(user, isOAuthLogin, loginType);
+      console.log('추출된 닉네임:', nickname);
 
       // 프로필 존재 확인
       const existingProfile = await checkExistingProfile(user.id);
+      console.log('기존 프로필:', existingProfile);
 
       if (!existingProfile && nickname) {
         // 프로필 생성
@@ -238,10 +228,8 @@ function AuthCallback() {
       const timer = setInterval(() => {
         setCountDown(prev => {
           if (prev <= 1) {
-            // 타이머 중지
-            clearInterval(timer);
-            // 강제로 이동
-            navigate('/todos');
+            clearInterval(timer); // 타이머 중지 시킴
+            navigate('/todos'); // 강제로 이동시킴
             return 0;
           }
           return prev - 1;
@@ -278,7 +266,7 @@ function AuthCallback() {
         <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '24px', color: '#1f2937' }}>
           인증 페이지
         </h2>
-        <h2 style={{ marginBottom: '16px', color: '#374151' }}>{msg}</h2>
+        <div style={{ marginBottom: '16px', color: '#374151' }}>{msg}</div>
         {/* 카운트다운 표시 */}
         {countDown && (
           <div

@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useRef } from 'react';
-import ReactQuill from 'react-quill';
+import React, { useCallback, useEffect, useRef } from 'react';
+import ReactQuill, { type Value } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+
 // 임시 미리보기 이미지의 데이터 형태
 interface TempImageFile {
   file: File; // 사용자가 실제로 선택한 이미지 파일
-  tempUrl: string; // URL.createObjectURL 로 만든 blob 임시 URL(본문 보여줌)
+  tempUrl: string; // URL.createObjectURL 로 만든 blob 임시 URL (본문 보여줌)
   id: string; // 관리를 위한 ID 를 할당
 }
 
 // 컴포넌트가 외부에서 전달받을 데이터 형태
 interface RichTextEditorProps {
   value: string; // 에디터에 초기로 보여줄 내용
-  onChange: (value: string) => void; // 내용이 변경될때 실행할 함수
-  placeholder?: string; // 안내 텍스트(선택사항)
-  disabled?: boolean; // 에디터를 비활성화할지 여부(선택사항)
+  onChange: (value: string) => void; // 내용이 변결될때 실행할 함수
+  placeholder?: string; // 안내 텍스트 (선택사항)
+  disabled?: boolean; // 에디터를 비활성화할지 여부 (선택사항)
   // 추가됨.
   onImagesChange?: (images: File[]) => void; // 파일을 외부에 보관하는 용도
 }
@@ -26,8 +27,9 @@ const RichTextEditor = ({
   onImagesChange, // 외부로 이미지를 전달하는 함수
 }: RichTextEditorProps) => {
   // ref 변수들을 저장해둠.
-  // ReactQuill 을 보관해둔다.
+  // ReactQuill 을 보관둡니다.
   const quilRef = useRef<ReactQuill | null>(null);
+
   // 미리보기 이미지들을 보관할 임시 목록("blob:~~")
   const tempImagesRef = useRef<TempImageFile[]>([]);
 
@@ -40,7 +42,7 @@ const RichTextEditor = ({
     return URL.createObjectURL(file);
   }, []);
 
-  // React Quill 의 툴바의 파일추가 (이미지 아이콘 클릭 처리)를 수정
+  // React Quill 의  툴바의 파일 추가 (이미지 아이콘 클릭 처리)를 수정
   // 리랜더링시 다시 함수 안만들도록 useCallback 으로 보관
   const imageHandler = useCallback(() => {
     // input 태그를 코딩으로 만들어 낸다.
@@ -142,6 +144,7 @@ const RichTextEditor = ({
       quill.setSelection(insertIndex);
     };
   }, [createTempImageUrl]);
+
   // value 변경되면 다시 value 를 보관함.
   useEffect(() => {
     valueRef.current = value;
@@ -212,25 +215,18 @@ const RichTextEditor = ({
     toolbar: [
       // 헤더 옵션: H1, H2, H3, 일반 텍스트
       [{ header: [1, 2, 3, false] }],
-
       // 텍스트 서식 옵션
       ['bold', 'italic', 'underline', 'strike'],
-
       // 색상 옵션: 텍스트 색상, 배경 색상
       [{ color: [] }, { background: [] }],
-
       // 텍스트 정렬 옵션: 왼쪽, 가운데, 오른쪽, 양쪽 정렬
       [{ align: [] }],
-
       // 목록 옵션: 순서 있는 목록, 순서 없는 목록
       [{ list: 'ordered' }, { list: 'bullet' }],
-
       // 들여쓰기 옵션: 왼쪽으로 들여쓰기, 오른쪽으로 들여쓰기
       [{ indent: '-1' }, { indent: '+1' }],
-
       // 링크와 이미지 삽입 옵션
       ['link', 'image'],
-
       // 서식 제거 옵션: 선택한 텍스트의 모든 서식을 제거
       ['clean'],
     ],
@@ -263,7 +259,8 @@ const RichTextEditor = ({
     }
   }, [onImagesChange, value]); // 에디터에 내용이 바뀔때마다 이미지 목록 업데이트
 
-  // 에디터가 마운트 되면 즉, 화면에 보이면 이미지 버튼에 이벤트 리스너 추가
+  // 에디터가 마운트 되면
+  // 즉, 화면에 보이면 이미지 버튼에 이벤트 리스너추가
   useEffect(() => {
     // 약간 시간을 두고 핸들러 등록 (에디터가 초기화 하는 데 시간걸림)
     const timer = setTimeout(() => {
@@ -291,7 +288,7 @@ const RichTextEditor = ({
         ref={quilRef} // React Quill 인스턴스를 보관해 둠.
         theme="snow" // 테마
         value={value} // 에디터에 보여줄 내용
-        onChange={onChange} // 내용 변경시 실행될 함수
+        onChange={onChange} // 내용 변경시 실행할 함수
         modules={modules} // 툴바에 기능 설정
         formats={formats} // 허용할 HTML 태그
         placeholder={placeholder} // 안내 글자

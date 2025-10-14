@@ -23,17 +23,17 @@ function SignInPage() {
       navigate('/todos');
     }
   };
-
   return (
     <div>
       <div className="page-header">
-        <h2 className="page-title">✨ 로그인 페이지</h2>
-        <p className="page-subtitle">계정에 로그인하세요.</p>
+        <h2 className="page-title">🗝️ 로그인페이지</h2>
+        <p className="page-subtitle">계정에 로그인하시오.</p>
       </div>
+
       <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">이메일</label>{' '}
+            <label className="form-label">이메일</label>
             <input
               type="email"
               value={email}
@@ -54,27 +54,26 @@ function SignInPage() {
               required
             />
           </div>
+
           <button type="submit" className="btn btn-success btn-lg" style={{ width: '100%' }}>
             로그인
           </button>
         </form>
 
         {/* SNS 로그인 영역 */}
-        <div style={{ display: 'flex', alignItems: 'center', margin: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', margin: 'var(--space-6) 0' }}>
           <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--gray-300)' }}></div>
           <span style={{ padding: '0 var(--space-4)', fontSize: '14px' }}>또는</span>
           <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--gray-300)' }}></div>
-          <div></div>
         </div>
 
-        {/* 카카오 로그인 버튼 : 오류 메시지는 사용자도 볼 수 있어야 함. */}
+        {/* 카카오 로그인 버튼 : 오류 메시지는 사용자도 볼 수 있어야 함.*/}
         <KakaoLoginButton onError={error => setMsg(`카카오 로그인 오류 : ${error}`)} />
-        {/* 구글 로그인 버튼 : 오류 메시지는 사용자도 볼 수 있어야 함. */}
+        {/* 구글 로그인 버튼 :  오류 메시지는 사용자도 볼 수 있어야 함.  */}
         <div style={{ marginTop: 'var(--space-3)' }}>
           <GoogleLoginButton onError={error => setMsg(`구글 로그인 오류 : ${error}`)} />
         </div>
-
-        {/* 메세지 출력 */}
+        {/* 메시지 출력 */}
         {msg && (
           <p
             style={{

@@ -1,16 +1,14 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import KakaoLoginButton from '../components/KakaoLoginButton';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { createProfile } from '../lib/profile';
-import type { ProfileInsert } from '../types/TodoTypes';
-import KakaoLoginButton from '../components/KakaoLoginButton';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 
 function SignUpPage() {
   const { signUp, checkEmailExists, checkNicknameExists } = useAuth();
+
   const [email, setEmail] = useState<string>('');
   const [pw, setPw] = useState<string>('');
-  // 추가 정보 (닉네임)
   const [nickName, setNickName] = useState<string>('');
   const [msg, setMsg] = useState<string>('');
 
@@ -18,6 +16,7 @@ function SignUpPage() {
   const [emailCheckStatus, setEmailCheckStatus] = useState<
     'idle' | 'checking' | 'available' | 'taken'
   >('idle');
+
   // 이메일 중복 확인 메세지
   const [emailCheckMessage, setEmailCheckMessage] = useState<string>('');
 
@@ -25,79 +24,81 @@ function SignUpPage() {
   const [nicknameCheckStatus, setNicknameCheckStatus] = useState<
     'idle' | 'checking' | 'available' | 'taken'
   >('idle');
+
   // 닉네임 중복 확인 메세지
   const [nicknameCheckMessage, setNicknameCheckMessage] = useState<string>('');
 
   // 이메일 중복 확인 함수
   const handleEmailCheck = async () => {
     if (!email.trim()) {
-      setEmailCheckMessage(`이메일을 입력해주세요.`);
+      setEmailCheckMessage('이메일을 입력해주세요.');
       setEmailCheckStatus('taken');
       return;
     }
     // 입력된 글자가 email 형식에 맞는지 정규표현식으로 검사
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setEmailCheckMessage(`올바른 이메일 형식을 입력해주세요.`);
+      setEmailCheckMessage('올바른 이메일 형식을 입력해주세요.');
       setEmailCheckStatus('taken');
       return;
     }
-    setEmailCheckStatus(`checking`);
-    setEmailCheckMessage(`이메일 중복 확인 중...`);
+
+    setEmailCheckStatus('checking');
+    setEmailCheckMessage('이메일 중복 확인 중...');
     try {
       // DB 에 직접 이메일 글자를 보내고 중복확인 진행.
       const result = await checkEmailExists(email);
       if (result.error) {
         setEmailCheckMessage(`오류 : ${result.error}`);
-        setEmailCheckStatus(`taken`);
+        setEmailCheckStatus('taken');
       } else if (result.exists) {
-        setEmailCheckMessage(`이미 사용중인 이메일 입니다.`);
+        setEmailCheckMessage('이미 사용 중인 이메일입니다.');
         setEmailCheckStatus('taken');
       } else {
-        setEmailCheckMessage(`사용 가능한 이메일 입니다.`);
-        setEmailCheckStatus(`available`);
+        setEmailCheckMessage('사용 가능한 이메일입니다.');
+        setEmailCheckStatus('available');
       }
     } catch (error) {
-      setEmailCheckMessage(`이메일 중복 확인 중 오류가 발생했습니다.`);
-      setEmailCheckStatus(`taken`);
+      setEmailCheckMessage('이메일 중복 확인 중 오류가 발생했습니다.');
+      setEmailCheckStatus('taken');
     }
   };
 
   // 닉네임 중복 확인 함수
   const handleNicknameCheck = async () => {
     if (!nickName.trim()) {
-      setNicknameCheckMessage(`닉네임을 입력해 주세요.`);
-      setNicknameCheckStatus(`taken`);
+      setNicknameCheckMessage('닉네임을 입력해 주세요.');
+      setNicknameCheckStatus('taken');
       return;
     }
     if (nickName.trim().length < 2) {
-      setNicknameCheckMessage(`닉네임은 2자 이상 입력해 주세요.`);
-      setNicknameCheckStatus(`taken`);
+      setNicknameCheckMessage('닉네임은 2자 이상 입력해 주세요.');
+      setNicknameCheckStatus('taken');
       return;
     }
-    setNicknameCheckStatus(`checking`);
-    setNicknameCheckMessage(`닉네임 중복 확인 중...`);
+    setNicknameCheckStatus('checking');
+    setNicknameCheckMessage('닉네임 중복 확인 중...');
     try {
       // DB 에 직접 닉네임 글자를 보내고 중복확인 진행.
       const result = await checkNicknameExists(nickName);
       if (result.error) {
         setNicknameCheckMessage(`오류 : ${result.error}`);
-        setNicknameCheckStatus(`taken`);
+        setNicknameCheckStatus('taken');
       } else if (result.exists) {
-        setNicknameCheckMessage(`이미 사용중인 닉네임 입니다.`);
+        setNicknameCheckMessage('이미 사용 중인 닉네임입니다.');
         setNicknameCheckStatus('taken');
       } else {
-        setNicknameCheckMessage(`사용 가능한 닉네임 입니다.`);
-        setNicknameCheckStatus(`available`);
+        setNicknameCheckMessage('사용 가능한 닉네임입니다.');
+        setNicknameCheckStatus('available');
       }
     } catch (error) {
-      setNicknameCheckMessage(`닉네임 중복 확인 중 오류가 발생했습니다.`);
-      setNicknameCheckStatus(`taken`);
+      setNicknameCheckMessage('닉네임 중복 확인 중 오류가 발생했습니다.');
+      setNicknameCheckStatus('taken');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    // 웹 브라우저 갱신 막기
+    // 웹브라우저 갱신 막기
     e.preventDefault();
 
     if (!email.trim()) {
@@ -110,7 +111,7 @@ function SignUpPage() {
       return;
     }
     if (pw.length < 6) {
-      alert('비밀번호는 최소 6자 이상입니다.');
+      alert('비밀번호는 최소 6자입니다.');
       return;
     }
 
@@ -119,47 +120,34 @@ function SignUpPage() {
       return;
     }
 
-    // 회원가입 하기 및 추가정보 입력하기
+    // 회원가입 및 추가정보 입력하기
     const { error, data } = await supabase.auth.signUp({
       email,
       password: pw,
       options: {
         // 회원 가입 후 이메일로 인증 확인시 리다이렉트 될 URL
         emailRedirectTo: `${window.location.origin}/auth/callback`,
-        // 잠시 추가정보를 보관함.
+        // 잠시 추가정보를 보관합니다.
         // Supabase 에서 auth 에는 추가적인 정보를 저장하는 객체가 존재
-        // 공식적인 명칭은 metadata 라고 한다.
-        // 이메일 인증 후에 프로필 생성시에 사용하려고 보관
+        // 공식적인 명칭이 metadata 라고 합니다.
+        // 이메일 인증 후에 프로필 생성 시에 사용하려고 보관
         data: { nickName: nickName },
       },
     });
+
     if (error) {
       setMsg(`회원가입 오류 : ${error}`);
     } else {
       setMsg(
         '회원가입이 성공했습니다. 이메일 인증 링크를 확인해주세요. 인증 완료 후 프로필이 자동으로 생성됩니다.',
       );
-      // 회원가입 성공했으므로 profiles 도 채워준다.
-      // if (data?.user?.id) {
-      //   // 프로필을 추가한다.
-      //   const newUser: ProfileInsert = { id: data.user.id, nickname: nickName };
-      //   const result = await createProfile(newUser);
-      //   if (result) {
-      //     // 프로필 추가가 성공한 경우
-      //     setMsg('회원가입 및 프로필 생성 성공했습니다. 이메일 인증 링크를 확인해주세요.');
-      //   } else {
-      //     // 프로필 추가가 실패한 경우
-      //     setMsg('회원가입은 성공, 프로필 생성은 실패했습니다.');
-      //   }
-      // } else {
-      //   setMsg('회원가입이 성공했습니다. 이메일 인증 링크를 확인해주세요.');
-      // }
     }
   };
+
   return (
     <div>
       <div className="page-header">
-        <h2 className="page-title">Todo 서비스 회원가입</h2>
+        <h2 className="page-title">📚 회원가입</h2>
         <p className="page-subtitle">새 계정을 만들어 보세요.</p>
       </div>
       <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -180,14 +168,14 @@ function SignUpPage() {
                 }}
                 placeholder="이메일"
                 className="form-input"
-                required
                 style={{ flex: 1 }}
+                required
               />
               {/* 이메일 중복체크버튼태그 */}
               <button
+                type="button"
                 onClick={handleEmailCheck}
                 disabled={emailCheckStatus === 'checking'}
-                type="button"
                 style={{
                   padding: '8px 16px',
                   backgroundColor: emailCheckStatus === 'available' ? '#10b981' : '#3b82f6',
@@ -200,7 +188,7 @@ function SignUpPage() {
                   opacity: emailCheckStatus === 'checking' ? 0.6 : 1,
                 }}
               >
-                {emailCheckStatus === 'checking' ? `확인중...` : `중복확인`}
+                {emailCheckStatus === 'checking' ? '확인중...' : '중복확인'}
               </button>
             </div>
             {/* 이메일 체크 결과 메시지 영역 */}
@@ -230,7 +218,7 @@ function SignUpPage() {
               type="password"
               value={pw}
               onChange={e => setPw(e.target.value)}
-              placeholder="비밀번호  (최소 6자)"
+              placeholder="비밀번호 (최소 6자)"
               className="form-input"
               required
             />
@@ -249,15 +237,16 @@ function SignUpPage() {
                     setNicknameCheckMessage('');
                   }
                 }}
-                placeholder="닉네임을 입력하세요"
-                required
+                placeholder="닉네임을 입력하세요."
+                className="form-input"
                 style={{ flex: 1 }}
+                required
               />
               {/* 닉네임 중복체크버튼태그 */}
               <button
+                type="button"
                 onClick={handleNicknameCheck}
                 disabled={nicknameCheckStatus === 'checking'}
-                type="button"
                 style={{
                   padding: '8px 16px',
                   backgroundColor: nicknameCheckStatus === 'available' ? '#10b981' : '#3b82f6',
@@ -270,7 +259,7 @@ function SignUpPage() {
                   opacity: nicknameCheckStatus === 'checking' ? 0.6 : 1,
                 }}
               >
-                {nicknameCheckStatus === 'checking' ? `확인중...` : `중복확인`}
+                {nicknameCheckStatus === 'checking' ? '확인중...' : '중복확인'}
               </button>
             </div>
             {/* 닉네임 체크 결과 메시지 영역 */}
@@ -363,26 +352,27 @@ function SignUpPage() {
             </div>
           )}
         </form>
+
         {/* SNS 로그인 영역 */}
-        <div style={{ display: 'flex', alignItems: 'center', margin: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', margin: 'var(--space-6) 0' }}>
           <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--gray-300)' }}></div>
           <span style={{ padding: '0 var(--space-4)', fontSize: '14px' }}>또는</span>
           <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--gray-300)' }}></div>
-          <div></div>
         </div>
-        {/* 카카오 로그인 버튼 */}
+
+        {/* 카카오 로그인 버튼 : 오류 메시지는 사용자도 볼 수 있어야 함.*/}
         <KakaoLoginButton
           onError={error => setMsg(`카카오 로그인 오류 : ${error}`)}
           onSuccess={message => setMsg(message)}
         />
-        {/* 구글 로그인 버튼 : 오류 메시지는 사용자도 볼 수 있어야 함. */}
+        {/* 구글 로그인 버튼 :  오류 메시지는 사용자도 볼 수 있어야 함.  */}
         <div style={{ marginTop: 'var(--space-3)' }}>
           <GoogleLoginButton
             onError={error => setMsg(`구글 로그인 오류 : ${error}`)}
             onSuccess={message => setMsg(message)}
           />
         </div>
-        {/* 메세지 출력 */}
+        {/* 메시지 출력 */}
         {msg && (
           <p
             style={{

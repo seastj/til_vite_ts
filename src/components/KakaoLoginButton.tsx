@@ -2,13 +2,12 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 // 오류 메시지를 사용한 화면에 보여줄 함수
-interface KaKaoLoginButtonProps {
+interface KakaoLoginButtonProps {
   children?: React.ReactNode;
   onError?: (error: string) => void;
   onSuccess?: (message: string) => void;
 }
-
-const KakaoLoginButton = ({ onError, onSuccess }: KaKaoLoginButtonProps) => {
+const KakaoLoginButton = ({ onError, onSuccess }: KakaoLoginButtonProps) => {
   // 카카오 로그인 사용
   const { signInWithKakao } = useAuth();
   // 카카오 로그인 실행
@@ -31,7 +30,6 @@ const KakaoLoginButton = ({ onError, onSuccess }: KaKaoLoginButtonProps) => {
       console.log('카카오 로그인 오류 : ', err);
     }
   };
-
   return (
     <button
       type="button"
@@ -62,7 +60,7 @@ const KakaoLoginButton = ({ onError, onSuccess }: KaKaoLoginButtonProps) => {
       {/* 카카오 아이콘 SVG */}
       <svg
         width="20"
-        height="20  "
+        height="20"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfile, removeAvatar, updateProfile, uploadAvatar } from '../lib/profile';
-import type { Profile, ProfileUpdate } from '../types/TodoTypes';
+import type { Profile, ProfileUpdate } from '../types/TodoType';
 import Loading from '../components/Loading';
 
 /**
@@ -11,7 +11,7 @@ import Loading from '../components/Loading';
  * - 회원탈퇴 기능 : 확인을 거치고 진행하도록
  */
 function ProfilePage() {
-  // 회원 기본 정보
+  // 회원 기본 정보 (카카오, 구글 회원 탈퇴 추가)
   const { user, deleteAccount, unlinkKakaoAccount, unlinkGoogleAccount, changePassword } =
     useAuth();
   // 데이터 가져오는 동안의 로딩
@@ -136,30 +136,33 @@ function ProfilePage() {
     const message =
       '카카오 계정 연동을 해제하시겠습니까? \n\n 연동 해제 후에는 카카오로 다시 로그인 할 수 없습니다.';
     const isConfirm = confirm(message);
+
     if (isConfirm) {
       const result = await unlinkKakaoAccount();
       if (result.success) {
-        alert(`${result.message}`);
+        alert(result.message);
         // 연동 해제 후 로그아웃 처리
         window.location.href = '/signin';
       } else if (result.error) {
-        alert(`연동 해제 실패 : ${result.error}`);
+        alert(`연동 해제 실패: ${result.error}`);
       }
     }
   };
+
   // 구글 계정 연동 해제
   const handleUnlinkGoogle = async () => {
     const message =
       '구글 계정 연동을 해제하시겠습니까? \n\n 연동 해제 후에는 구글로 다시 로그인 할 수 없습니다.';
     const isConfirm = confirm(message);
+
     if (isConfirm) {
       const result = await unlinkGoogleAccount();
       if (result.success) {
-        alert(`${result.message}`);
+        alert(result.message);
         // 연동 해제 후 로그아웃 처리
         window.location.href = '/signin';
       } else if (result.error) {
-        alert(`연동 해제 실패 : ${result.error}`);
+        alert(`연동 해제 실패: ${result.error}`);
       }
     }
   };
@@ -168,47 +171,48 @@ function ProfilePage() {
   const handlePasswordChange = async () => {
     // 입력값 검증
     if (!newPassword.trim()) {
-      setPasswordMessage(`새 비밀번호를 입력하세요.`);
+      setPasswordMessage('새 비밀번호를 입력해주세요.');
       return;
     }
     if (newPassword.length < 6) {
-      setPasswordMessage(`비밀번호는 최소 6자 이상이어야 합니다.`);
+      setPasswordMessage('비밀번호는 최소 6자 이상이어야 합니다.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordMessage(`비밀번호가 일치하지 않습니다.`);
+      setPasswordMessage('비밀번호가 일치하지 않습니다.');
       return;
     }
     try {
       const result = await changePassword(newPassword);
-      if (result.error) {
-        setPasswordMessage(`비밀번호가 성공적으로 변경되었습니다.`);
+      if (result.success) {
+        setPasswordMessage('비밀번호가 성공적으로 변경되었습니다.');
         // 폼 초기화
-        setNewPassword(``);
-        setConfirmPassword(``);
-        // 3초후 자동으로 메시지 제거
+        setNewPassword('');
+        setConfirmPassword('');
+        // 3초 후 메시지 자동 제거
         setTimeout(() => {
-          setPasswordMessage(``);
+          setPasswordMessage('');
         }, 3000);
       } else if (result.error) {
-        setPasswordMessage(`비밀번호 변경 실패 : ${result.error}`);
+        setPasswordMessage(`비밀번호 변경 실패: ${result.error}`);
       }
     } catch (err) {
-      setPasswordMessage(`비밀번호 변경 중 오류가 발생했습니다.`);
+      setPasswordMessage('비밀번호 변경 중 오류가 발생했습니다.');
     }
   };
 
   // 회원탈퇴
   const handleDeleteUser = () => {
     // 카카오 또는 구글 로그인 사용자인지 확인
-    const isKakaoUser = user?.app_metadata.provider === `kakao`;
-    const isGoogleUser = user?.app_metadata.provider === `google`;
+    const isKakaoUser = user?.app_metadata.provider === 'kakao';
+    const isGoogleUser = user?.app_metadata.provider === 'google';
 
     const message: string = isKakaoUser
       ? '😥 카카오 계정 연동을 해제하고 계정을 삭제하시겠습니까? \n\n 복구가 불가능합니다.'
       : isGoogleUser
         ? '😥 구글 계정 연동을 해제하고 계정을 삭제하시겠습니까? \n\n 복구가 불가능합니다.'
         : '😥 계정을 완전히 삭제하시겠습니까? \n\n 복구가 불가능합니다.';
+
     let isConfirm = false;
     isConfirm = confirm(message);
 
@@ -308,7 +312,7 @@ function ProfilePage() {
           <div
             style={{
               padding: 'var(--space-3)',
-              backgroundColor: '#fff',
+              backgroundColor: '#ffffff',
               borderRadius: 'var(--radius-md)',
               color: 'var(--gray-700)',
               display: 'flex',
@@ -362,6 +366,7 @@ function ProfilePage() {
             )}
           </div>
         </div>
+
         <div className="form-group">
           <label className="form-label">이메일</label>
           <div
@@ -419,11 +424,10 @@ function ProfilePage() {
                 placeholder="닉네임을 입력하세요."
               />
             </div>
-
             {/* 이메일 로그인 사용자에게만 비밀번호 변경 섹션 표시 */}
             {(!user?.app_metadata.provider || user?.app_metadata.provider === 'email') && (
               <div className="form-group">
-                <label className="form-label">비밀번호 변경</label>
+                <label className="form-label">🔒 비밀번호 변경</label>
                 <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
                   <input
                     type="password"
@@ -469,7 +473,6 @@ function ProfilePage() {
                 )}
               </div>
             )}
-
             <div className="form-group">
               <label className="form-label">아바타 편집</label>
               <div style={{ marginBottom: 'var(--space-4)' }}>
@@ -687,6 +690,7 @@ function ProfilePage() {
                 {profileData?.nickname || '닉네임이 설정되지 않았습니다'}
               </div>
             </div>
+
             <div className="form-group">
               <label className="form-label">🖼️ 아바타</label>
               <div style={{ textAlign: 'center' }}>
@@ -799,16 +803,18 @@ function ProfilePage() {
                 🔗 카카오 연동 해제
               </button>
             )}
+
             {/* 구글 사용자에게만 연동 해제 버튼 표시 */}
             {user?.app_metadata?.provider === 'google' && (
               <button
                 className="btn btn-warning btn-lg"
                 onClick={handleUnlinkGoogle}
-                style={{ backgroundColor: '#4285f4', color: '#fff', border: 'none' }}
+                style={{ backgroundColor: '#4285F4', color: '#FFFFFF', border: 'none' }}
               >
                 🔗 구글 연동 해제
               </button>
             )}
+
             <button className="btn btn-danger btn-lg" onClick={handleDeleteUser}>
               {user?.app_metadata?.provider === 'kakao'
                 ? '카카오 연동 해제 & 탈퇴'

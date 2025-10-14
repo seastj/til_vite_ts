@@ -1,28 +1,28 @@
 import { Link, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import HomePage from './pages/HomePage';
-import SignUpPage from './pages/SignUpPage';
-import SignInPage from './pages/SignInPage';
-import TodosPage from './pages/TodosPage';
 import Protected from './components/Protected';
-import ProfilePage from './pages/ProfilePage';
-import AuthCallback from './pages/AuthCallback';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AdminPage from './pages/AdminPage';
-import TodosInfinitePage from './pages/TodosInfinitePage';
-import TodoListPage from './pages/TodoListPage';
-import TodoWritePage from './pages/TodoWritePage';
-import TodoEditPage from './pages/TodoEditPage';
+import AuthCallback from './pages/AuthCallback';
+import HomePage from './pages/HomePage';
+import ProfilePage from './pages/ProfilePage';
+import SignInPage from './pages/SignInPage';
+import SignUpPage from './pages/SignUpPage';
 import TodoDetailPage from './pages/TodoDetailPage';
+import TodoEditPage from './pages/TodoEditPage';
+import TodoListPage from './pages/TodoListPage';
+import TodosInfinitePage from './pages/TodosInfinitePage';
+import TodoWritePage from './pages/TodoWritePage';
 import DirectChatPage from './pages/chat/DirectChatPage';
 // 1:1 채팅 관련 css
 import './components/chat/chat.css';
-import { DirectChatProider } from './contexts/DirectChatContext';
+import { DirectChatProider, useDirectChat } from './contexts/DirectChatContext';
 
 const TopBar = () => {
   const { signOut, user } = useAuth();
+  const { hasNewChatNotification } = useDirectChat();
   // 관리자인 경우 메뉴 추가로 출력하기
-  // isAdmin 에는 true/fasle
-  const isAdmin = user?.email === 'dev.seastj@gmail.com';
+  // isAdmin 에는 true/false
+  const isAdmin = user?.email === 'tarolong@naver.com';
 
   return (
     <nav className="nav">
@@ -52,6 +52,7 @@ const TopBar = () => {
       {user && (
         <Link to="/chat" className="nav-link">
           1 : 1 채팅
+          {hasNewChatNotification && <span className="notification-badge">●</span>}
         </Link>
       )}
       {user && (
@@ -76,11 +77,11 @@ const TopBar = () => {
 
 function App() {
   return (
-    <DirectChatProider>
-      <AuthProvider>
+    <AuthProvider>
+      <DirectChatProider>
         <div className="container">
           <div className="page-header">
-            <h1 className="page-title">🥚Todo Service</h1>
+            <h1 className="page-title">👩‍🦰 Todo Service</h1>
           </div>
           <Router
             future={{
@@ -134,6 +135,7 @@ function App() {
                   </Protected>
                 }
               />
+
               <Route
                 path="/profile"
                 element={
@@ -142,6 +144,7 @@ function App() {
                   </Protected>
                 }
               />
+
               <Route
                 path="/admin"
                 element={
@@ -150,7 +153,7 @@ function App() {
                   </Protected>
                 }
               />
-              {/* 1:1 채팅 페이지 */}
+              {/* 1 : 1 채팅 페이지 */}
               <Route
                 path="/chat"
                 element={
@@ -162,8 +165,8 @@ function App() {
             </Routes>
           </Router>
         </div>
-      </AuthProvider>
-    </DirectChatProider>
+      </DirectChatProider>
+    </AuthProvider>
   );
 }
 
